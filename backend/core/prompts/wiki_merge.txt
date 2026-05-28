@@ -1,0 +1,20 @@
+# Wiki 页面合并任务
+
+请将以下两个关于同一主题的 Wiki 页面合并为一个完整的页面。
+
+## 合并规则
+1. 保留所有重要信息，不遗漏任何细节
+2. 如果信息有冲突，优先保留较新的来源（{new_source}）
+3. 保留 frontmatter 中的 title、tags、sources 等元数据
+4. 保持原有的 [[...]] 内部链接格式
+5. 去除重复内容
+6. 使用 Markdown 格式输出
+
+## 旧页面（来源：{old_sources}）
+{old_page}
+
+## 新页面（来源：{new_source}）
+{new_page}
+
+## 输出要求
+请输出合并后的完整 Wiki 页面内容，必须包含 frontmatter（以 --- 开头）。

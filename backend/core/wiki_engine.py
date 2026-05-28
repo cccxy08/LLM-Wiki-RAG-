@@ -8,6 +8,7 @@ import json
 from pathlib import Path
 from datetime import datetime
 from typing import Optional, List
+from core.prompts import load
 
 from core.config import settings
 from core.llm_provider import get_llm, LLMProvider
@@ -15,6 +16,15 @@ from core.llm_provider import get_llm, LLMProvider
 
 class WikiEngine:
     """Wiki engine core"""
+
+    _instance: Optional["WikiEngine"] = None
+
+    @classmethod
+    def get_instance(cls) -> "WikiEngine":
+        """获取单例（避免多次加载模型占满内存）"""
+        if cls._instance is None:
+            cls._instance = cls()
+        return cls._instance
 
     def __init__(self):
         self.paths = settings.get_wiki_paths()
@@ -39,10 +49,61 @@ class WikiEngine:
         bl_path = self.paths["data"] / "backlinks.json"
         if not bl_path.exists():
             bl_path.write_text("{}", encoding="utf-8")
+        # tags.json
+        tp = self.paths["data"] / "tags.json"
+        if not tp.exists():
+            tp.write_text("[]", encoding="utf-8")
 
     @property
     def _backlinks_path(self) -> Path:
         return self.paths["data"] / "backlinks.json"
+
+    @property
+    def _tags_path(self) -> Path:
+        return self.paths["data"] / "tags.json"
+
+    def _read_tags(self) -> list[str]:
+        """Read tags.json, return list of all known tags."""
+        try:
+            return json.loads(self._tags_path.read_text(encoding="utf-8"))
+        except (json.JSONDecodeError, FileNotFoundError):
+            return []
+
+    def _extract_tags_from_page(self, content: str) -> list[str]:
+        """Extract tags list from page frontmatter."""
+        m = re.search(r"^tags:\s*\[(.+?)\]", content, re.MULTILINE)
+        if m:
+            return [t.strip().strip('"\'') for t in m.group(1).split(",") if t.strip()]
+        m = re.search(r"^tags:\s*(.+)$", content, re.MULTILINE)
+        if m:
+            val = m.group(1).strip()
+            if val and val != "[]":
+                return [t.strip() for t in val.split(",") if t.strip()]
+        return []
+
+    def _sync_tags_from_page(self, content: str):
+        """Extract tags from page frontmatter and merge into tags.json."""
+        page_tags = self._extract_tags_from_page(content)
+        if not page_tags:
+            return
+        existing = self._read_tags()
+        merged = list(set(existing + page_tags))
+        if sorted(merged) != sorted(existing):
+            self._tags_path.write_text(json.dumps(merged, ensure_ascii=False, indent=2), encoding="utf-8")
+
+    def _format_tags_context(self) -> str:
+        """Build tags context string for LLM prompts."""
+        tags = self._read_tags()
+        if not tags:
+            return ""
+        return f"已有页面使用的 tags：{json.dumps(tags, ensure_ascii=False)}。优先使用已有 tags，含义不匹配时可以创建新 tag。"
+
+    def get_page_tags(self, page_title: str) -> list[str]:
+        """Public: get tags for a specific page. Reads directly from the page file."""
+        content = self.read_page(page_title)
+        if not content:
+            return []
+        return self._extract_tags_from_page(content)
 
     def _get_schema(self) -> str:
         sp = self.paths["data"] / "WIKI-SCHEMA.md"
@@ -98,21 +159,13 @@ class WikiEngine:
             page_list_lines.append(f"- {fp.stem}: {first_line}")
         page_list = "\n".join(page_list_lines)
 
-        prompt = f"""你是一个知识库导航助手。根据用户问题，从以下 Wiki 页面列表中选择最相关的页面。
-只返回页面名称，每行一个，最多{top_k}个。不要返回其他内容。
-
-Wiki 页面列表：
-{page_list}
-
-用户问题：{question}
-
-相关页面："""
+        prompt = load("wiki_find_pages.txt", top_k=top_k, page_list=page_list, question=question)
 
         try:
             raw = self.llm.chat([
                 {"role": "system", "content": "你只返回相关页面名称，每行一个，不要其他内容。"},
                 {"role": "user", "content": prompt}
-            ])
+            ], label="find_pages")
             titles = []
             for line in raw.strip().split("\n"):
                 t = line.strip().lstrip("- *0123456789. #（）()")
@@ -131,30 +184,18 @@ Wiki 页面列表：
                 content = content[:3000] + "\n...(内容过长已截断)"
             context_parts.append(f"## {title}\n{content}")
 
-        prompt = f"""根据以下 Wiki 页面内容回答用户问题。
-
-规则：
-1. 只依据提供的 Wiki 内容回答
-2. 如果信息不完整，如实说明
-3. 标注引用的页面名称
-
-Wiki 内容：
-{"\n\n---\n\n".join(context_parts)}
-
-用户问题：{question}
-
-请用中文回答："""
+        prompt = load("wiki_answer.txt", context="\n\n---\n\n".join(context_parts), question=question)
 
         try:
             return self.llm.chat([
                 {"role": "system", "content": (
                     "你是企业知识库助手，只依据提供的 Wiki 内容回答。不确定就说不知道。\n\n"
-                    "语义理解规则：用户可能用不同的表述描述同一件事（如「负责人」=「主管」、"
-                    "「做支付」=「参与支付系统」、「制定报销制度」=「做报销制度」）。"
-                    "请根据提供的 Wiki 内容推理判断，不要因为用词不一致就认为信息不存在。"
+                    "语义理解规则：用户可能用不同的词描述同一件事（如「负责人」=「主管」、"
+                    "「做支付」=「参与支付系统」）。请结合上下文理解用户意图，不要因为用词"
+                    "不完全一致就认为不匹配。"
                 )},
                 {"role": "user", "content": prompt}
-            ])
+            ], label="answer")
         except Exception:
             return "系统繁忙，请稍后重试。"
 
@@ -162,62 +203,110 @@ Wiki 内容：
 
     def ingest(self, content, source_name):
         """Ingest raw content into wiki. Per IMPACT-MAP:
-        1. LLM generates wiki page (_generate_wiki_page or _generate_wiki_page_small)
+        1. LLM generates wiki page(s) (_generate_wiki_page or _generate_wiki_page_small)
         2. Clean LLM output (_clean_llm_output)
         3. Auto-link cross-references (_auto_link)
-        4. Write page
+        4. Write page(s)
         5. Update backlinks
-        6. Analyze impact on existing pages (_analyze_impact)
-        7. Update affected pages if needed (_update_pages)
-        8. Update index
-        9. Append log
+        6. Update index
+        7. Append log
         """
         from core.llm_provider import detect_model_tier
 
         schema = self._get_schema()
         tier = detect_model_tier(getattr(self.llm, 'model_name', ''))
 
-        # Step 1: Generate wiki page (small model uses step-by-step fallback)
+        # Step 1: Generate wiki page(s) (small model uses step-by-step fallback)
         if tier == "small":
-            wiki_page = self._generate_wiki_page_small(content, source_name, schema)
+            wiki_pages = self._generate_wiki_page_small(content, source_name, schema)
         else:
-            wiki_page = self._generate_wiki_page(content, source_name, schema)
+            wiki_pages = self._generate_wiki_page(content, source_name, schema)
 
-        if not wiki_page or not wiki_page.strip():
+        if not wiki_pages:
             return {"wiki_pages": [], "log_entry": "", "error": "Generation failed"}
 
-        # Step 2: Clean LLM output
-        wiki_page = self._clean_llm_output(wiki_page)
+        all_fns = []
+        all_modified = []
+        log_entries = []
 
-        # Step 3: Auto-link cross-references
-        wiki_page = self._auto_link(wiki_page)
+        for wiki_page in wiki_pages:
+            if not wiki_page or not wiki_page.strip():
+                continue
 
-        title = self._extract_title(wiki_page) or source_name.replace(".md", "")
-        fn = self._safe_filename(title) + ".md"
-        p = self.paths["pages"] / fn
-        p.write_text(wiki_page, encoding="utf-8")
-        self._page_cache[title] = wiki_page
+            # Step 2: Clean LLM output
+            wiki_page = self._clean_llm_output(wiki_page)
 
-        # Update backlinks
-        modified = self._update_backlinks_for_page(title, wiki_page)
+            # Step 3: Auto-link cross-references
+            wiki_page = self._auto_link(wiki_page)
+
+            title = self._extract_title(wiki_page) or source_name.replace(".md", "")
+            fn = self._safe_filename(title) + ".md"
+            p = self.paths["pages"] / fn
+
+            # Step 3.5: Dedup detection - check if this page already exists
+            matched_title = self._dedup_detect(title)
+            if matched_title and matched_title != title:
+                existing_fn = self._safe_filename(matched_title) + ".md"
+                existing_p = self.paths["pages"] / existing_fn
+                if existing_p.exists():
+                    old_content = existing_p.read_text(encoding="utf-8")
+                    merged = self._merge_pages(matched_title, old_content, title, wiki_page, source_name)
+                    if merged:
+                        wiki_page = merged
+                        title = matched_title
+                        fn = existing_fn
+                        p = existing_p
+                        self._append_log("merge", f"Merged {title} with new content from {source_name}")
+                        self._update_backlinks_for_page(title, wiki_page)
+                        all_fns.append(fn)
+                        log_entries.append(f"{title}(merged)")
+                        p.write_text(wiki_page, encoding="utf-8")
+                        self._page_cache[title] = wiki_page
+                        self._sync_tags_from_page(wiki_page)
+                        self._update_index(title, fn, source_name)
+                        all_modified.append(fn)
+                        continue
+
+            # Step 4: Write page(s)
+            p.write_text(wiki_page, encoding="utf-8")
+            self._page_cache[title] = wiki_page
+
+            # 同步 tags 到 tags.json
+            self._sync_tags_from_page(wiki_page)
+
+            # Update backlinks
+            modified = self._update_backlinks_for_page(title, wiki_page)
+            all_modified.extend(modified)
+
+            # Update index
+            self._update_index(title, fn, source_name)
+
+            all_fns.append(fn)
+            log_entries.append(title)
 
         # 分析影响 → 更新已有页面
         affected = self._analyze_impact(content, source_name)
         if affected:
             updated = self._update_pages(content, source_name, affected)
             if updated:
-                modified = list(set(modified + updated))
+                all_modified = list(set(all_modified + updated))
 
-        # Update index
-        self._update_index(title, fn, source_name)
+        # 自动创建不存在的链接页面
+        auto_created = self._autocreate_linked_pages(all_fns)
+        if auto_created:
+            all_fns.extend(auto_created)
+            all_modified = list(set(all_modified + auto_created))
 
         # Log
-        extra = f" (updated {len(modified)})" if modified else ""
-        log = self._append_log("ingest", f"Imported {source_name} -> {title}{extra}")
-        return {"wiki_pages": [fn], "modified_pages": modified, "log_entry": log}
+        extra = f" (updated {len(all_modified)})" if all_modified else ""
+        titles_str = ", ".join(log_entries)
+        log = self._append_log("ingest", f"Imported {source_name} -> {titles_str}{extra}")
+        return {"wiki_pages": all_fns, "modified_pages": all_modified, "log_entry": log}
 
-    def _generate_wiki_page(self, content: str, source_name: str, schema: str = "") -> str:
-        """LLM generates a structured wiki page from raw content."""
+    def _generate_wiki_page(self, content: str, source_name: str, schema: str = "") -> list[str]:
+        """LLM generates one or more structured wiki pages from raw content.
+        Returns a list of page strings (Markdown with frontmatter).
+        """
         schema_context = f"""Wiki 格式规范：
 {schema[:2000]}
 """ if schema else ""
@@ -231,33 +320,31 @@ Wiki 内容：
         except:
             pass
 
-        prompt = f"""{schema_context}{index_context}请将以下原始内容整理为一篇结构化的 Wiki 页面。
+        # 读取已有 tags，供 LLM 优先复用
+        tags_context = self._format_tags_context()
 
-要求：
-1. 使用 frontmatter（--- 包裹的 YAML）标注 title、type、created、updated、sources、tags
-2. 标题使用 H1（#），章节使用 H2（##）
-3. 使用 [[页面名]] 格式做交叉引用
-4. 保留所有关键信息，不要编造
-        5. 人物文档必须保留姓名、部门、职位、项目经历
-        6. 制度文档必须标注制度名称、适用范围、生效日期
-        7. 项目文档必须记录负责人、参与人、时间线
-        8. 末尾添加 ## 参见 章节列出相关页面
-
-原始内容：
-{content[:5000]}
-
-来源：{source_name}
-
-请输出完整的 Wiki 页面："""
+        prompt = load("wiki_ingest.txt",
+            schema_context=schema_context,
+            index_context=index_context,
+            tags_context=tags_context,
+            content=content[:5000],
+            source_name=source_name,
+        )
 
         try:
-            return self.llm.chat([
-                {"role": "system", "content": "你是 Wiki 编辑助手，输出结构化的 Markdown Wiki 页面。"},
+            raw_output = self.llm.chat([
+                {"role": "system", "content": "你是 Wiki 编辑助手，输出结构化的 Markdown Wiki 页面。可能输出多个页面，用 ---NEWPAGE--- 分隔。"},
                 {"role": "user", "content": prompt}
-            ])
+            ], label="ingest")
+            # Split on separator and return list of pages
+            if "---NEWPAGE---" in raw_output:
+                pages = [p.strip() for p in raw_output.split("---NEWPAGE---")]
+            else:
+                pages = [raw_output.strip()]
+            return [p for p in pages if p]
         except Exception:
             # Fallback: simple markdown conversion
-            return f"""---
+            return [f"""---
 title: {source_name.replace('.md', '')}
 type: source-summary
 created: {datetime.now().strftime('%Y-%m-%d')}
@@ -267,7 +354,7 @@ sources: [{source_name}]
 # {source_name.replace('.md', '')}
 
 {content}
-"""
+"""]
 
     def _extract_title(self, wiki_page: str) -> Optional[str]:
         """Extract title from frontmatter or H1 heading."""
@@ -302,7 +389,7 @@ sources: [{source_name}]
             raw = re.sub(pat, '', raw, flags=re.IGNORECASE)
 
         # 2. Remove markdown code block wrappers (```markdown ... ```)
-        raw = re.sub(r'^```(?:markdown|md|wiki)?\s*\n', '', raw, flags=re.IGNORECASE)
+        raw = re.sub(r'^```(?:markdown|md|wiki|yaml)?\s*\n', '', raw, flags=re.IGNORECASE)
         raw = re.sub(r'\n```\s*$', '', raw)
 
         # 3. Strip leading/trailing whitespace and blank lines
@@ -360,16 +447,23 @@ sources: [{source_name}]
                 continue
             if len(title) < 2:  # skip single-char titles
                 continue
-            # Only replace if title appears as a standalone word/phrase
-            # Use word boundary matching but handle Chinese (no word boundaries in regex)
-            pattern = re.escape(title)
-            # For Chinese+ASCII mixed titles, use lookahead/lookbehind for boundaries
+            # 完整词组匹配，避免子串误匹配（如"支付"误匹配到"在线支付服务"）
+            # 中文词边界：前后不能是 CJK 字符、字母、数字
+            # ASCII 词边界：前后不能是字母、数字、下划线
+            escaped = re.escape(title)
+            # 判断 title 是否含 CJK 字符，选择对应边界
+            has_cjk = bool(re.search(r'[\u4e00-\u9fff]', title))
+            if has_cjk:
+                # 中文词边界：前后不能是 CJK 统一表意文字、字母、数字
+                boundary_l = r'(?<![\u4e00-\u9fffA-Za-z0-9])'
+                boundary_r = r'(?![\u4e00-\u9fffA-Za-z0-9])'
+            else:
+                # ASCII 词边界
+                boundary_l = r'(?<![A-Za-z0-9_])'
+                boundary_r = r'(?![A-Za-z0-9_])'
             replacement = f'[[{title}]]'
-            # Replace only if NOT already inside a [[...]] (handled by protect above)
-            # Use negative lookbehind for '[' and negative lookahead for ']' to avoid
-            # matching substrings of longer titles already wrapped
             body = re.sub(
-                rf'(?<!\[\[)(?<!\[){pattern}(?!\]\])(?!\])',
+                boundary_l + escaped + boundary_r,
                 replacement,
                 body
             )
@@ -380,7 +474,7 @@ sources: [{source_name}]
 
         return frontmatter + body
 
-    def _generate_wiki_page_small(self, content: str, source_name: str, schema: str = "") -> str:
+    def _generate_wiki_page_small(self, content: str, source_name: str, schema: str = "") -> list[str]:
         """Multi-step wiki page generation for small models (fallback).
 
         When the LLM is too small to generate a full wiki page in one pass,
@@ -388,22 +482,18 @@ sources: [{source_name}]
         1. Extract title + frontmatter
         2. Generate body sections
         3. Add cross-references + 参见
+
+        Returns a list of page strings (typically one).
         """
         schema_context = f"Wiki 格式规范：\n{schema[:1500]}\n" if schema else ""
 
         # Step 1: Title + frontmatter
-        step1_prompt = f"""{schema_context}从以下内容中提取标题，生成 frontmatter。
-
-原始内容：
-{content[:3000]}
-
-请输出 frontmatter（--- 包裹的 YAML），包含 title、type、created、sources、tags。
-不要输出其他内容。"""
+        step1_prompt = load("wiki_small_step1.txt", schema_context=schema_context, content=content[:3000])
         try:
             frontmatter = self.llm.chat([
                 {"role": "system", "content": "你只输出 YAML frontmatter，不要其他内容。"},
                 {"role": "user", "content": step1_prompt}
-            ])
+            ], label="ingest")
         except Exception:
             frontmatter = f"---\ntitle: {source_name.replace('.md', '')}\ntype: source-summary\ncreated: {datetime.now().strftime('%Y-%m-%d')}\nsources: [{source_name}]\n---"
 
@@ -412,23 +502,12 @@ sources: [{source_name}]
             frontmatter = f"---\ntitle: {source_name.replace('.md', '')}\ntype: source-summary\ncreated: {datetime.now().strftime('%Y-%m-%d')}\nsources: [{source_name}]\n---"
 
         # Step 2: Body sections
-        step2_prompt = f"""将以下内容整理为结构化的 Wiki 正文。使用 ## 章节标题分节，保留所有关键信息。
-
-规则：
-1. 开头用 # 标题（一级标题）
-2. 章节用 ## 标题
-3. 使用 [[页面名]] 格式做交叉引用
-4. 不要编造信息
-
-原始内容：
-{content[:5000]}
-
-请输出正文（Markdown）："""
+        step2_prompt = load("wiki_small_step2.txt", content=content[:5000])
         try:
             body = self.llm.chat([
                 {"role": "system", "content": "你是 Wiki 编辑助手，输出结构化的 Markdown 正文。"},
                 {"role": "user", "content": step2_prompt}
-            ])
+            ], label="ingest")
         except Exception:
             body = f"# {source_name.replace('.md', '')}\n\n{content}"
 
@@ -436,19 +515,15 @@ sources: [{source_name}]
 
         # Step 3: Cross-references + 参见
         existing_titles = [fp.stem for fp in self._list_pages()]
-        step3_prompt = f"""为以下 Wiki 页面末尾添加「参见」章节，列出相关的交叉引用页面。
-
-已知 Wiki 页面：{', '.join(existing_titles[:30])}
-
-页面正文（末尾部分）：
-{body[-2000:]}
-
-请在末尾添加 ## 参见 章节（如果还不存在），列出最多 5 个相关页面，使用 [[页面名]] 格式。"""
+        step3_prompt = load("wiki_small_step3.txt",
+            existing_titles=', '.join(existing_titles[:30]),
+            body_tail=body[-2000:],
+        )
         try:
             see_also = self.llm.chat([
                 {"role": "system", "content": "你只输出 ## 参见 章节内容，不要其他。"},
                 {"role": "user", "content": step3_prompt}
-            ])
+            ], label="ingest")
         except Exception:
             see_also = ""
 
@@ -456,9 +531,7 @@ sources: [{source_name}]
         if see_also and '## 参见' not in body:
             body = body.rstrip() + '\n\n' + see_also
 
-        return frontmatter + '\n\n' + body
-
-    # ==================== Backlinks ====================
+        return [frontmatter + '\n\n' + body]
 
     def _get_backlinks_data(self) -> dict:
         """Read backlinks.json, return {page: {incoming: [...], outgoing: [...]}}."""
@@ -591,7 +664,7 @@ sources: [{source_name}]
                     "severity": "warning"
                 })
 
-        # Broken cross-references
+        # Broken cross-references (only check explicit [[links]], not plain text)
         for name, fp in all_pages.items():
             content = fp.read_text(encoding="utf-8")
             content_clean = re.sub(r"```[\s\S]*?```", "", content)
@@ -650,126 +723,278 @@ sources: [{source_name}]
     # Backward compat alias
     _log = _append_log
 
-    # ==================== Impact Analysis & Page Update ====================
-
-    def _analyze_impact(self, content, source_name):
-        """LLM determines which existing pages may be affected by new content.
-
-        Strategy:
-        - Skip if < 5 wiki pages (not enough context to analyze)
-        - Provide LLM with page list + new content
-        - LLM returns affected page titles (max 5)
-        - Empty list = no updates needed
+    def _autocreate_linked_pages(self, source_pages: list[str]) -> list[str]:
         """
-        pages = self._list_pages()
-        if len(pages) < 5:
+        扫描指定页面的所有 [[链接]]，对不存在的页面自动创建。
+        source_pages: 刚写入的页面文件名列表（如 ['林晓蕾.md']）
+        returns: 新创建的页面文件名列表
+        """
+        new_pages = []
+        # Collect all [[links]] from source pages
+        links_to_check = []
+        for fn in source_pages:
+            p = self.paths["pages"] / fn
+            if not p.exists():
+                continue
+            try:
+                content = p.read_text(encoding="utf-8")
+            except Exception:
+                continue
+            # Extract [[links]], skipping those inside code blocks
+            clean = p.read_text(encoding="utf-8")
+            clean = re.sub(r"```[\s\S]*?```", "", clean)
+            clean = re.sub(r"`[^`]+`", "", clean)
+            found = re.findall(r"\[\[(.+?)\]\]", clean)
+            for link in found:
+                safe = self._safe_filename(link)
+                target = self.paths["pages"] / f"{safe}.md"
+                if not target.exists() and link not in links_to_check:
+                    links_to_check.append(link)
+
+        if not links_to_check:
             return []
 
-        # Build compact page list
-        page_lines = []
-        for fp in sorted(pages, key=lambda f: f.stem):
-            page_lines.append(f"- {fp.stem}")
-        page_list = "\n".join(page_lines)
+        # For each missing page, generate content using LLM
+        for link_title in links_to_check:
+            safe = self._safe_filename(link_title)
+            target = self.paths["pages"] / f"{safe}.md"
 
-        prompt = f"""你是一个知识库一致性检查助手。判断以下新文档可能影响哪些已有 Wiki 页面。
+            # Build context from pages that reference this link
+            context_parts = []
+            for fn in source_pages:
+                p = self.paths["pages"] / fn
+                if p.exists():
+                    try:
+                        text = p.read_text(encoding="utf-8")
+                        context_parts.append(f"## {fn}\n{text[:2000]}")
+                    except Exception:
+                        pass
 
-判断标准：
-1. 新文档提到的人物、部门、项目涉及已有页面 → 可能补充信息
-2. 新文档与已有页面描述有矛盾 → 需要标记
-3. 只看语义相关性，不要求关键词精确匹配
-
-已有 Wiki 页面：
-{page_list}
-
-新文档（来源：{source_name}）：
-{content[:3000]}
-
-请列出可能受影响的页面标题，每行一个，最多 5 个。没有则回复「无」。
-只返回页面标题，不要其他内容。"""
-
-        try:
-            raw = self.llm.chat([
-                {"role": "system", "content": "只返回受影响的页面标题，每行一个，最多 5 个。没有则回复「无」。不输出其他内容。"},
-                {"role": "user", "content": prompt}
-            ])
-            raw = raw.strip()
-            if not raw or "无" in raw:
-                return []
-
-            # Parse titles and filter to actual existing pages
-            valid_titles = {fp.stem for fp in pages}
-            titles = []
-            for line in raw.split("\n"):
-                t = line.strip().lstrip("- *0123456789. #（）()")
-                if t and t not in ("无", "None", "没有", "none"):
-                    titles.append(t)
-
-            return [t for t in titles[:5] if t in valid_titles]
-        except Exception:
-            return []
-
-    def _update_pages(self, content, source_name, affected):
-        """For each affected page, let LLM decide if update is needed and apply.
-
-        Strategy:
-        - Read each affected page's current content
-        - LLM judges: conflict / supplement / irrelevant
-        - If update needed: append new section (not rewrite entire page)
-        - Write updated page, update cache + backlinks, log
-        - Returns list of actually modified page titles
-        """
-        modified = []
-
-        for title in affected:
-            existing = self.read_page(title)
-            if not existing:
+            if not context_parts:
                 continue
 
-            prompt = f"""你是一个知识库编辑助手。判断以下新内容是否需要更新已有 Wiki 页面。
+            context_str = "\n\n---\n\n".join(context_parts)
 
-已有页面「{title}」：
-{existing[:3000]}
-
-新内容（来源：{source_name}）：
-{content[:2000]}
-
-判断规则：
-1. 新内容与已有页面矛盾 → 输出更正说明，以「> ⚠️ 待核实：」开头
-2. 新内容补充了已有页面没有的信息 → 输出补充段落
-3. 新内容与已有页面无关 → 只回复 NO_UPDATE
-
-只输出需要追加的内容，不要重复已有信息。不需要更新时只回复 NO_UPDATE。"""
-
+            prompt = load("wiki_autocreate.txt",
+                link_title=link_title,
+                created_date=datetime.now().strftime('%Y-%m-%d'),
+                context_str=context_str,
+            )
             try:
                 raw = self.llm.chat([
-                    {"role": "system", "content": "你是知识库编辑助手。不需要更新时只回复 NO_UPDATE。需要更新时只输出追加/修改的段落，不重复已有内容。"},
+                    {"role": "system", "content": "你是 Wiki 编辑助手，只基于提供的引用内容生成页面。如果引用中没有实质性信息，回复 EMPTY_PAGE。"},
                     {"role": "user", "content": prompt}
-                ])
+                ], label="ingest")
                 raw = raw.strip()
-
-                if not raw or raw.upper().startswith("NO_UPDATE"):
+                if raw.upper().startswith("EMPTY_PAGE") or len(raw) < 20:
                     continue
 
-                # Clean LLM output
-                addon = self._clean_llm_output(raw)
+                page_content = self._clean_llm_output(raw)
+                target.write_text(page_content, encoding="utf-8")
+                self._page_cache[link_title] = page_content
 
-                # Append to existing page (safe: adds section, doesn't rewrite)
-                updated = existing.rstrip() + "\n\n## 更新记录（来源：{src}）\n\n{addon}".format(src=source_name, addon=addon)
+                # Update backlinks
+                self._update_backlinks_for_page(link_title, page_content)
 
-                # Write updated page
-                fn = self._safe_filename(title) + ".md"
-                p = self.paths["pages"] / fn
-                p.write_text(updated, encoding="utf-8")
-                self._page_cache[title] = updated
+                # Update index
+                fn = f"{safe}.md"
+                self._update_index(link_title, fn, "auto-created")
+                new_pages.append(fn)
+                self._append_log("autocreate", f"Created page {link_title} from [[link]] in {', '.join(source_pages)}")
+            except Exception:
+                continue
 
-                # Refresh backlinks for the modified page
-                self._update_backlinks_for_page(title, updated)
+        return new_pages
 
-                # Log
-                self._append_log("update", f"Updated {title} based on {source_name}")
+    # ==================== Dedup & Merge ====================
 
-                modified.append(title)
+    def _dedup_detect(self, title: str) -> Optional[str]:
+        """Detect if a new page title duplicates an existing wiki page.
+
+        Uses title normalization + fuzzy matching:
+        1. Strip common suffixes
+        2. Compare normalized title against all existing page titles
+        3. Return matched filename or None
+        """
+        if not title:
+            return None
+
+        # Normalize
+        norm = title.lower().strip()
+        norm = re.sub(r"[（(].*?[）)]", "", norm)
+        norm = norm.replace('有限公司', '').replace('公司', '')
+        norm = norm.replace('v', '').replace('version', '')
+        norm = norm.replace(' ', '').replace('-', '').replace('_', '')
+        norm = norm.replace('[', '').replace(']', '').lstrip('[')
+
+        if not norm:
+            return None
+
+        existing_pages = [fp.stem for fp in self._list_pages()]
+        best_match = None
+        best_score = 0.0
+
+        for stem in existing_pages:
+            stem_norm = stem.lower().strip()
+            stem_norm = re.sub(r"[（(].*?[）)]", "", stem_norm)
+            stem_norm = stem_norm.replace('有限公司', '').replace('公司', '')
+            stem_norm = stem_norm.replace('v', '').replace('version', '')
+            stem_norm = stem_norm.replace(' ', '').replace('-', '').replace('_', '')
+            stem_norm = stem_norm.replace('[', '').replace(']', '').lstrip('[')
+
+            if not stem_norm:
+                continue
+
+            # Jaccard similarity on character sets
+            set1 = set(norm)
+            set2 = set(stem_norm)
+            intersection = len(set1 & set2)
+            union = len(set1 | set2)
+            score = intersection / union if union > 0 else 0
+
+            # Substring containment bonus
+            if norm in stem_norm or stem_norm in norm:
+                score = max(score, 0.8)
+
+            # Key entity overlap bonus
+            if len(norm) >= 4 and len(stem_norm) >= 4:
+                if norm[:4] in stem_norm or stem_norm[:4] in norm:
+                    score = max(score, 0.75)
+
+            if score > best_score:
+                best_score = score
+                best_match = stem
+
+        if best_score >= 0.6:
+            return best_match
+        return None
+
+    def _merge_pages(self, old_title, old_content, new_title, new_content, source_name):
+        """Merge two wiki pages about the same topic using LLM."""
+        from core.prompts import load
+
+        old_sources = source_name
+        m = __import__("re").search(r"sources:\s*\[(.+?)\]", old_content)
+        if m:
+            old_sources = m.group(1)
+
+        prompt = load("wiki_merge.txt",
+            old_sources=old_sources,
+            old_page=old_content,
+            new_source=source_name,
+            new_page=new_content,
+        )
+
+        try:
+            merged = self.llm.chat([
+                {"role": "system", "content": "你是 Wiki 编辑助手。合并两个同主题的页面，保留所有信息。"},
+                {"role": "user", "content": prompt}
+            ], label="ingest")
+
+            if not merged or not merged.strip():
+                return None
+
+            merged = self._clean_llm_output(merged)
+
+            if not merged.startswith('---'):
+                merged = f"---\ntitle: {old_title}\ntype: merged\nsources: [{old_sources}, {source_name}]\n---\n\n{merged}"
+
+            return merged
+        except Exception:
+            return None
+
+    # ==================== Impact Analysis ====================
+
+    def _analyze_impact(self, content, source_name):
+        """Analyze which existing pages may be affected by new content.
+
+        Scans the new content for entity names that match existing page titles.
+        """
+        if not content:
+            return []
+
+        affected = []
+        existing_titles = set()
+        for fp in self._list_pages():
+            existing_titles.add(fp.stem)
+
+        # Check each existing page title against the new content
+        for stem in existing_titles:
+            if len(stem) >= 2 and stem in content:
+                affected.append(stem)
+
+        return affected
+
+    def _update_pages(self, content, source_name, affected):
+        """Update affected existing pages with new information.
+
+        For each affected page, uses LLM to determine if update is needed.
+        Returns list of modified page filenames.
+        """
+        if not affected:
+            return []
+
+        modified = []
+
+        for page_title in affected:
+            fn = self._safe_filename(page_title) + ".md"
+            p = self.paths["pages"] / fn
+
+            if not p.exists():
+                continue
+
+            old_content = p.read_text(encoding="utf-8")
+
+            update_prompt = (
+                f"\u73b0\u6709 Wiki \u9875\u9762\u6807\u9898\uff1a{page_title}\n\n"
+                f"\u73b0\u6709\u9875\u9762\u5185\u5bb9\uff1a\n{old_content[:3000]}\n\n"
+                f"\u65b0\u6765\u6e90 ({source_name}) \u7684\u5185\u5bb9\uff1a\n{content[:3000]}\n\n"
+                "\u8bf7\u5224\u65ad\u65b0\u5185\u5bb9\u662f\u5426\u5305\u542b\u73b0\u6709\u9875\u9762\u4e2d\u4e0d\u5b58\u5728\u7684\u91cd\u8981\u4fe1\u606f\uff0c\u6216\u4e0e\u73b0\u6709\u9875\u9762\u77db\u76fe\u3002\n"
+                "\u5982\u679c\u6709\uff0c\u8bf7\u8f93\u51fa**\u5b8c\u6574\u7684\u66f4\u65b0\u540e\u7684 Wiki \u9875\u9762**\uff08\u5fc5\u987b\u5305\u542b frontmatter\uff0c\u4ee5 --- \u5f00\u5934\uff09\u3002\n"
+                "\u5982\u679c\u6ca1\u6709\u65b0\u4fe1\u606f\uff0c\u8bf7\u53ea\u8f93\u51fa\uff1aNO_UPDATE"
+            )
+
+            try:
+                result = self.llm.chat([
+                    {"role": "system", "content": "\u4f60\u662f Wiki \u7f16\u8f91\u52a9\u624b\u3002\u5224\u65ad\u662f\u5426\u9700\u8981\u66f4\u65b0\u73b0\u6709\u9875\u9762\u3002\u5982\u679c\u66f4\u65b0\uff0c\u8f93\u51fa\u5b8c\u6574\u7684 Wiki \u9875\u9762\u5185\u5bb9\uff0c\u4ee5 --- \u5f00\u5934\u3002"},
+                    {"role": "user", "content": update_prompt}
+                ], label="ingest")
+
+                if result and "NO_UPDATE" not in result:
+                    result = self._clean_llm_output(result)
+
+                    # Strip any LLM commentary before the first frontmatter
+                    result_lines = result.split("\n")
+                    fm_start = -1
+                    for j, rl in enumerate(result_lines):
+                        if rl.strip() == "---":
+                            fm_start = j
+                            break
+
+                    if fm_start >= 0:
+                        result = "\n".join(result_lines[fm_start:])
+                    else:
+                        continue  # No frontmatter = garbage, skip
+
+                    # Verify frontmatter has title
+                    result = result.strip()
+                    title_ok = False
+                    for rl in result.split("\n"):
+                        if rl.strip().startswith("title:"):
+                            title_ok = True
+                            break
+                    if not title_ok:
+                        continue  # Invalid frontmatter, skip
+
+                    p.write_text(result, encoding="utf-8")
+                    self._page_cache[page_title] = result
+                    self._update_backlinks_for_page(page_title, result)
+                    modified.append(fn)
+                    self._append_log("update", f"Updated {page_title} from {source_name}")
             except Exception:
                 continue
 
         return modified
+
+
+    

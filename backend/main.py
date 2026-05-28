@@ -1,4 +1,4 @@
-﻿"""FastAPI 入口 - Wiki-RAG 双引擎知识问答系统"""
+"""FastAPI 入口 - Wiki-RAG 双引擎知识问答系统"""
 import uvicorn
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -30,7 +30,8 @@ app.include_router(router)
 @app.on_event("startup")
 async def startup_event():
     """启动时检查"""
-    print(f"🚀 Wiki-RAG 系统启动中...")
+    import sys; sys.stdout.reconfigure(encoding='utf-8')
+    print(f"Wiki-RAG 系统启动中...")
     print(f"   LLM Provider: {settings.llm_provider}")
     print(f"   API 文档: http://{settings.host}:{settings.port}/docs")
 

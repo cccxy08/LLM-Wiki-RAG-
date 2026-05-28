@@ -1,0 +1,7 @@
+{schema_context}从以下内容中提取标题，生成 frontmatter。
+
+原始内容：
+{content}
+
+请输出 frontmatter（--- 包裹的 YAML），包含 title、type、created、sources、tags。
+不要输出其他内容。

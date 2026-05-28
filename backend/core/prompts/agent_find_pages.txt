@@ -1,0 +1,12 @@
+从以下 Wiki 页面列表中选择与用户查询最相关的 {max_pages} 个页面{comparison_suffix}。
+参考页面标签（tags）可以帮助你找到更相关的页面。
+{intent_context}
+只返回页面名称，每行一个，不要返回其他内容。
+
+Wiki 页面列表：
+{page_list}
+
+用户查询：{short_query}
+
+相关页面：
+{comparison_hint}

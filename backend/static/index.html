@@ -1,0 +1,1062 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CodeXFiles · 知识问答</title>
+<style>
+/* ═══════════════════════════════════════════
+   DESIGN TOKENS — Light Glassmorphism
+   ═══════════════════════════════════════════ */
+:root {
+  /* Surfaces — warm white with glass */
+  --bg-root:    #f0f2f8;
+  --bg-surface: rgba(255, 255, 255, 0.62);
+  --bg-raised:  rgba(255, 255, 255, 0.45);
+  --bg-hover:   rgba(255, 255, 255, 0.7);
+  --bg-active:  rgba(240, 242, 250, 0.6);
+  --bg-overlay: rgba(255, 255, 255, 0.8);
+
+  /* Text — warm depth */
+  --text-primary:   #1a1d2e;
+  --text-secondary: #5c6178;
+  --text-tertiary:  #8e93a8;
+  --text-disabled:  #bfc3d2;
+  --text-inverse:   #ffffff;
+
+  /* Accent — warm indigo-violet */
+  --accent:        #5b5ce6;
+  --accent-hover:  #4a4bd6;
+  --accent-soft:   rgba(91, 92, 230, 0.12);
+  --accent-glow:   rgba(91, 92, 230, 0.25);
+  --accent-subtle: rgba(91, 92, 230, 0.06);
+  --accent-warm:   #f0936b;
+
+  /* Semantic */
+  --success:  #2eac8e;
+  --error:    #e55858;
+  --error-bg: rgba(229, 88, 88, 0.08);
+  --error-border: rgba(229, 88, 88, 0.18);
+
+  /* Borders — glass edges */
+  --border-subtle:  rgba(255, 255, 255, 0.5);
+  --border-default: rgba(0, 0, 0, 0.06);
+  --border-strong:  rgba(0, 0, 0, 0.1);
+  --border-glass:   rgba(255, 255, 255, 0.6);
+
+  /* Glass */
+  --glass-bg:       rgba(255, 255, 255, 0.55);
+  --glass-bg-hover: rgba(255, 255, 255, 0.72);
+  --glass-border:   rgba(255, 255, 255, 0.7);
+  --glass-blur:     24px;
+
+  /* Chat bubbles */
+  --bubble-user: linear-gradient(135deg, #5b5ce6 0%, #8b7cf7 100%);
+  --bubble-bot:  rgba(255, 255, 255, 0.6);
+
+  /* Animation */
+  --ease-out-expo:  cubic-bezier(0.19, 1, 0.22, 1);
+  --ease-out-quart: cubic-bezier(0.165, 0.84, 0.44, 1);
+  --ease-out-cubic: cubic-bezier(0.215, 0.61, 0.355, 1);
+  --dur-micro:  100ms;
+  --dur-fast:   180ms;
+  --dur-normal: 240ms;
+  --dur-slow:   350ms;
+  --dur-page:   500ms;
+
+  /* Spacing */
+  --sp-1:  4px;
+  --sp-2:  8px;
+  --sp-3:  12px;
+  --sp-4:  16px;
+  --sp-5:  20px;
+  --sp-6:  24px;
+  --sp-8:  32px;
+  --sp-10: 40px;
+
+  /* Radii */
+  --r-sm:   8px;
+  --r-md:   12px;
+  --r-lg:   18px;
+  --r-xl:   24px;
+  --r-2xl:  28px;
+  --r-full: 999px;
+
+  /* Shadows — soft luminous */
+  --shadow-float:  0 4px 20px rgba(91, 92, 230, 0.08), 0 1px 4px rgba(0,0,0,0.04);
+  --shadow-raised: 0 8px 32px rgba(91, 92, 230, 0.1), 0 2px 8px rgba(0,0,0,0.06);
+  --shadow-glow:   0 0 0 3px rgba(91, 92, 230, 0.18), 0 0 20px rgba(91, 92, 230, 0.08);
+  --shadow-accent: 0 4px 20px rgba(91, 92, 230, 0.25);
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html, body {
+  height: 100%;
+  overflow: hidden;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, "PingFang SC", "Microsoft YaHei", sans-serif;
+  font-size: 15px;
+  line-height: 1.6;
+  background: var(--bg-root);
+  color: var(--text-primary);
+  display: flex;
+  flex-direction: column;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ═══════════════════════════════════════════
+   AMBIENT — soft warm gradient orbs
+   ═══════════════════════════════════════════ */
+.bg-ambient {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  overflow: hidden;
+}
+
+.bg-orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(90px);
+  opacity: 0.5;
+  animation: orb-drift 22s ease-in-out infinite alternate;
+}
+.bg-orb--1 {
+  width: 480px; height: 480px;
+  background: radial-gradient(circle, rgba(91,92,230,0.28) 0%, transparent 70%);
+  top: -8%; left: -5%;
+  animation-duration: 24s;
+}
+.bg-orb--2 {
+  width: 380px; height: 380px;
+  background: radial-gradient(circle, rgba(240,147,107,0.22) 0%, transparent 70%);
+  bottom: -3%; right: -3%;
+  animation-duration: 20s;
+  animation-delay: -9s;
+}
+.bg-orb--3 {
+  width: 300px; height: 300px;
+  background: radial-gradient(circle, rgba(139,124,247,0.2) 0%, transparent 70%);
+  top: 45%; left: 55%;
+  animation-duration: 26s;
+  animation-delay: -15s;
+}
+
+@keyframes orb-drift {
+  0%   { transform: translate(0, 0) scale(1); }
+  33%  { transform: translate(35px, -25px) scale(1.08); }
+  66%  { transform: translate(-18px, 35px) scale(0.96); }
+  100% { transform: translate(25px, 15px) scale(1.04); }
+}
+
+/* Noise texture */
+.bg-ambient::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  opacity: 0.02;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+  background-size: 180px 180px;
+}
+
+/* ═══════════════════════════════════════════
+   HEADER — frosted glass
+   ═══════════════════════════════════════════ */
+.header {
+  position: relative;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 28px;
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--glass-blur)) saturate(180%);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(180%);
+  border-bottom: 1px solid var(--border-glass);
+  flex-shrink: 0;
+}
+
+.header-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.header-logo {
+  width: 36px;
+  height: 36px;
+  border-radius: 11px;
+  background: linear-gradient(135deg, #5b5ce6 0%, #8b7cf7 60%, #f0936b 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  font-weight: 800;
+  color: #fff;
+  box-shadow: var(--shadow-accent);
+  animation: logo-glow 4s ease-in-out infinite alternate;
+}
+
+@keyframes logo-glow {
+  0%   { box-shadow: 0 4px 20px rgba(91,92,230,0.3); }
+  100% { box-shadow: 0 4px 20px rgba(240,147,107,0.35); }
+}
+
+.header h1 {
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--text-primary);
+}
+
+.header-badge {
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--accent);
+  background: var(--accent-subtle);
+  padding: 3px 10px;
+  border-radius: var(--r-full);
+  border: 1px solid var(--accent-soft);
+  letter-spacing: 0.02em;
+}
+
+.header-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--text-tertiary);
+}
+
+.status-dot {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: var(--success);
+  box-shadow: 0 0 0 3px rgba(46, 172, 142, 0.15), 0 0 8px rgba(46, 172, 142, 0.3);
+  animation: status-pulse 2.5s ease-in-out infinite;
+}
+@keyframes status-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%      { opacity: 0.6; transform: scale(0.82); }
+}
+
+/* ═══════════════════════════════════════════
+   CHAT CONTAINER
+   ═══════════════════════════════════════════ */
+.chat-container {
+  position: relative;
+  z-index: 1;
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 24px 28px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  scroll-behavior: smooth;
+}
+
+.chat-container::-webkit-scrollbar {
+  width: 5px;
+}
+.chat-container::-webkit-scrollbar-track {
+  background: transparent;
+}
+.chat-container::-webkit-scrollbar-thumb {
+  background: rgba(0,0,0,0.06);
+  border-radius: 3px;
+}
+.chat-container::-webkit-scrollbar-thumb:hover {
+  background: rgba(0,0,0,0.12);
+}
+
+/* ═══════════════════════════════════════════
+   MESSAGE BUBBLES — glass cards
+   ═══════════════════════════════════════════ */
+.message {
+  max-width: 72%;
+  padding: 14px 20px;
+  border-radius: var(--r-xl);
+  font-size: 14px;
+  line-height: 1.65;
+  word-wrap: break-word;
+  animation: msg-enter var(--dur-slow) var(--ease-out-expo) both;
+  will-change: transform, opacity;
+  transition:
+    box-shadow var(--dur-fast) var(--ease-out-cubic),
+    transform var(--dur-fast) var(--ease-out-cubic),
+    border-color var(--dur-fast) var(--ease-out-cubic);
+}
+
+@keyframes msg-enter {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* User message — gradient glass */
+.message.user {
+  align-self: flex-end;
+  background: var(--bubble-user);
+  color: #fff;
+  border-bottom-right-radius: var(--r-sm);
+  box-shadow: var(--shadow-accent);
+  border: 1px solid rgba(255,255,255,0.2);
+  font-weight: 450;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Subtle shimmer on user messages */
+.message.user::before {
+  content: '';
+  position: absolute;
+  top: 0; left: -100%;
+  width: 100%; height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
+  animation: shimmer-sweep 5s ease-in-out infinite;
+}
+
+@keyframes shimmer-sweep {
+  0%, 100% { left: -100%; }
+  50%      { left: 100%; }
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .message.user:hover {
+    box-shadow: 0 6px 28px rgba(91,92,230,0.35);
+    transform: translateY(-1px);
+  }
+}
+
+/* Bot message — frosted white card */
+.message.bot {
+  align-self: flex-start;
+  background: var(--glass-bg);
+  backdrop-filter: blur(16px) saturate(160%);
+  -webkit-backdrop-filter: blur(16px) saturate(160%);
+  color: var(--text-primary);
+  border-bottom-left-radius: var(--r-sm);
+  box-shadow: var(--shadow-float);
+  border: 1px solid var(--glass-border);
+}
+@media (hover: hover) and (pointer: fine) {
+  .message.bot:hover {
+    border-color: var(--border-strong);
+    box-shadow: var(--shadow-raised);
+  }
+}
+
+.message.bot .source-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 12px;
+  border-radius: var(--r-full);
+  margin-top: 12px;
+  border: 1px solid rgba(91, 92, 230, 0.15);
+}
+
+/* ===== RAG Answer HTML Styles — Light Glass ===== */
+.message.bot .rag-answer {
+  line-height: 1.75;
+}
+
+.message.bot .rag-section {
+  margin-bottom: 10px;
+}
+
+.message.bot .rag-label {
+  display: inline-block;
+  font-size: 0.76em;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--accent);
+  background: var(--accent-soft);
+  border: 1px solid rgba(91, 92, 230, 0.1);
+  padding: 2px 10px;
+  border-radius: 6px;
+  margin-right: 8px;
+  vertical-align: baseline;
+}
+
+.message.bot .rag-content {
+  color: var(--text-primary);
+}
+
+.message.bot .rag-content strong {
+  color: var(--accent-hover);
+  font-weight: 600;
+}
+
+.message.bot .rag-list {
+  margin: 6px 0 6px 0;
+  padding-left: 18px;
+  list-style: none;
+}
+
+.message.bot .rag-list li {
+  margin-bottom: 6px;
+  line-height: 1.65;
+  padding-left: 14px;
+  position: relative;
+}
+
+.message.bot .rag-list li::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 9px;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 6px rgba(91,92,230,0.3);
+}
+
+.message.bot .rag-source {
+  display: inline;
+  font-size: 0.84em;
+  font-weight: 600;
+  color: var(--accent-warm);
+  background: rgba(240, 147, 107, 0.08);
+  padding: 1px 6px;
+  border-radius: 4px;
+  border: 1px solid rgba(240, 147, 107, 0.12);
+}
+
+.message.bot .rag-footer {
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border-default);
+  font-size: 0.84em;
+  color: var(--text-tertiary);
+}
+/* ===== End RAG Styles ===== */
+
+.message.bot .confidence {
+  font-size: 11px;
+  color: var(--text-tertiary);
+  margin-top: 6px;
+}
+
+.message.bot .query-detail {
+  font-size: 11px;
+  color: var(--text-tertiary);
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border-default);
+  line-height: 1.5;
+}
+
+/* Error message */
+.message.error-msg {
+  align-self: flex-start;
+  background: var(--error-bg);
+  color: var(--error);
+  border: 1px solid var(--error-border);
+  border-radius: var(--r-xl);
+  border-bottom-left-radius: var(--r-sm);
+  padding: 14px 20px;
+  font-size: 13.5px;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+/* ═══════════════════════════════════════════
+   TYPING INDICATOR — glass bubble
+   ═══════════════════════════════════════════ */
+.typing-indicator {
+  align-self: flex-start;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--glass-bg);
+  backdrop-filter: blur(16px) saturate(160%);
+  -webkit-backdrop-filter: blur(16px) saturate(160%);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--shadow-float);
+  padding: 16px 22px;
+  border-radius: var(--r-xl);
+  border-bottom-left-radius: var(--r-sm);
+  animation: msg-enter var(--dur-slow) var(--ease-out-expo) both;
+  will-change: transform, opacity;
+}
+
+.typing-indicator .dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 6px rgba(91,92,230,0.3);
+  animation: typing-bounce 1.4s var(--ease-out-expo) infinite;
+}
+.typing-indicator .dot:nth-child(2) { animation-delay: 0.16s; }
+.typing-indicator .dot:nth-child(3) { animation-delay: 0.32s; }
+
+@keyframes typing-bounce {
+  0%, 40% {
+    transform: translateY(0) scale(1);
+    opacity: 0.4;
+  }
+  20% {
+    transform: translateY(-8px) scale(1.3);
+    background: var(--accent-warm);
+    box-shadow: 0 0 10px rgba(240,147,107,0.4);
+    opacity: 1;
+  }
+}
+
+/* ═══════════════════════════════════════════
+   WELCOME STATE — glass hero
+   ═══════════════════════════════════════════ */
+.welcome {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  min-height: 300px;
+  text-align: center;
+}
+
+.welcome-icon {
+  width: 68px;
+  height: 68px;
+  border-radius: 20px;
+  background: linear-gradient(135deg, #5b5ce6 0%, #8b7cf7 50%, #f0936b 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 30px;
+  color: #fff;
+  margin-bottom: 24px;
+  box-shadow: 0 8px 32px rgba(91,92,230,0.25), 0 0 0 1px rgba(255,255,255,0.3) inset;
+  animation: welcome-icon-enter 800ms var(--ease-out-expo) both, icon-glow 4s ease-in-out infinite alternate;
+  will-change: transform, opacity;
+}
+
+@keyframes welcome-icon-enter {
+  from { opacity: 0; transform: scale(0.6) translateY(20px) rotate(-10deg); }
+  to   { opacity: 1; transform: scale(1) translateY(0) rotate(0deg); }
+}
+
+@keyframes icon-glow {
+  0%   { box-shadow: 0 8px 32px rgba(91,92,230,0.25), 0 0 0 1px rgba(255,255,255,0.3) inset; }
+  100% { box-shadow: 0 8px 32px rgba(240,147,107,0.3), 0 0 0 1px rgba(255,255,255,0.4) inset; }
+}
+
+.welcome h2 {
+  font-size: 26px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 8px;
+  letter-spacing: -0.03em;
+  animation: welcome-text-enter 600ms 100ms var(--ease-out-expo) both;
+  will-change: transform, opacity;
+}
+
+.welcome p {
+  font-size: 14px;
+  color: var(--text-secondary);
+  max-width: 400px;
+  animation: welcome-text-enter 600ms 180ms var(--ease-out-expo) both;
+  will-change: transform, opacity;
+}
+
+@keyframes welcome-text-enter {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Suggestion chips — glass capsules */
+.welcome-suggestions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: center;
+  margin-top: 32px;
+}
+
+.welcome-suggestion {
+  font-size: 13px;
+  padding: 9px 20px;
+  border-radius: var(--r-full);
+  background: var(--glass-bg);
+  backdrop-filter: blur(12px) saturate(150%);
+  -webkit-backdrop-filter: blur(12px) saturate(150%);
+  color: var(--text-secondary);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--shadow-float);
+  cursor: pointer;
+  transition:
+    background var(--dur-fast) var(--ease-out-cubic),
+    border-color var(--dur-fast) var(--ease-out-cubic),
+    color var(--dur-fast) var(--ease-out-cubic),
+    transform var(--dur-fast) var(--ease-out-cubic),
+    box-shadow var(--dur-fast) var(--ease-out-cubic);
+  animation: chip-enter 500ms var(--ease-out-expo) both;
+  will-change: transform;
+}
+.welcome-suggestion:nth-child(1) { animation-delay: 300ms; }
+.welcome-suggestion:nth-child(2) { animation-delay: 380ms; }
+.welcome-suggestion:nth-child(3) { animation-delay: 460ms; }
+.welcome-suggestion:nth-child(4) { animation-delay: 540ms; }
+
+@keyframes chip-enter {
+  from { opacity: 0; transform: translateY(14px) scale(0.92); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .welcome-suggestion:hover {
+    background: var(--accent-soft);
+    border-color: var(--accent);
+    color: var(--accent);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 24px rgba(91,92,230,0.18);
+  }
+}
+
+.welcome-suggestion:active {
+  transform: scale(0.96);
+  transition: transform var(--dur-micro) var(--ease-out-cubic);
+}
+
+/* ═══════════════════════════════════════════
+   INPUT AREA — frosted glass footer
+   ═══════════════════════════════════════════ */
+.input-area {
+  position: relative;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 28px;
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--glass-blur)) saturate(180%);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(180%);
+  border-top: 1px solid var(--border-glass);
+  flex-shrink: 0;
+}
+
+/* Input field — glass */
+.input-wrapper {
+  flex: 1;
+  position: relative;
+}
+
+.input-field {
+  width: 100%;
+  padding: 11px 18px;
+  border: 1px solid var(--border-glass);
+  border-radius: var(--r-full);
+  font-size: 14px;
+  font-family: inherit;
+  background: var(--glass-bg);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  color: var(--text-primary);
+  outline: none;
+  transition:
+    border-color var(--dur-fast) var(--ease-out-cubic),
+    box-shadow var(--dur-fast) var(--ease-out-cubic),
+    background var(--dur-fast) var(--ease-out-cubic);
+}
+.input-field::placeholder {
+  color: var(--text-disabled);
+}
+.input-field:focus {
+  border-color: var(--accent);
+  box-shadow: var(--shadow-glow);
+  background: rgba(255, 255, 255, 0.75);
+}
+.input-field:focus::placeholder {
+  color: var(--text-tertiary);
+}
+
+/* Send button — glowing gradient */
+.send-btn {
+  flex-shrink: 0;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border: none;
+  border-radius: 50%;
+  background: var(--bubble-user);
+  color: #fff;
+  cursor: pointer;
+  overflow: hidden;
+  transition:
+    background var(--dur-fast) var(--ease-out-cubic),
+    transform var(--dur-fast) var(--ease-out-cubic),
+    box-shadow var(--dur-fast) var(--ease-out-cubic);
+  will-change: transform;
+  box-shadow: var(--shadow-accent);
+}
+
+.send-btn::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  opacity: 0;
+  background: radial-gradient(circle, rgba(255,255,255,0.5) 0%, transparent 70%);
+  transform: scale(0);
+  transition: none;
+}
+
+.send-btn:active::after {
+  opacity: 1;
+  transform: scale(2.5);
+  transition: transform 400ms var(--ease-out-quart), opacity 400ms var(--ease-out-quart);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .send-btn:hover {
+    transform: scale(1.08);
+    box-shadow: 0 6px 24px rgba(91,92,230,0.4), 0 0 0 2px rgba(91,92,230,0.15);
+  }
+}
+
+.send-btn:active {
+  transform: scale(0.93);
+  transition: transform var(--dur-micro) var(--ease-out-cubic);
+}
+
+.send-btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+
+.send-btn:disabled {
+  background: #d8dae5;
+  color: var(--text-disabled);
+  cursor: not-allowed;
+  box-shadow: none;
+  transform: none;
+}
+
+.send-btn:disabled::after {
+  display: none;
+}
+
+.send-btn svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  position: relative;
+  z-index: 1;
+  transition: transform var(--dur-fast) var(--ease-out-cubic);
+}
+@media (hover: hover) and (pointer: fine) {
+  .send-btn:not(:disabled):hover svg {
+    transform: translateX(1px) translateY(-1px);
+  }
+}
+
+/* ═══════════════════════════════════════════
+   KEYBOARD HINT
+   ═══════════════════════════════════════════ */
+.kbd-hint {
+  position: absolute;
+  right: 56px;
+  bottom: 4px;
+  font-size: 10px;
+  color: var(--text-tertiary);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  pointer-events: none;
+  opacity: 0;
+  transform: translateY(4px);
+  transition:
+    opacity var(--dur-fast) var(--ease-out-cubic),
+    transform var(--dur-fast) var(--ease-out-cubic);
+}
+.input-field:focus ~ .kbd-hint,
+.input-field:not(:placeholder-shown) ~ .kbd-hint {
+  opacity: 1;
+  transform: translateY(0);
+}
+.kbd {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 17px;
+  height: 16px;
+  padding: 0 5px;
+  border-radius: 4px;
+  background: var(--glass-bg);
+  border: 1px solid var(--border-default);
+  font-size: 9.5px;
+  font-weight: 600;
+  color: var(--text-tertiary);
+  font-family: inherit;
+}
+
+/* ═══════════════════════════════════════════
+   ACCESSIBILITY
+   ═══════════════════════════════════════════ */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+  .bg-orb { animation: none; }
+  .bg-ambient::after { display: none; }
+  .chat-container { scroll-behavior: auto; }
+  .welcome-icon { animation: none; opacity: 1; }
+  .welcome h2, .welcome p { animation: none; opacity: 1; }
+  .welcome-suggestion { animation: none; opacity: 1; }
+  .message { animation: none; opacity: 1; }
+  .typing-indicator { animation: none; opacity: 1; }
+  .send-btn::after { display: none; }
+}
+
+/* ═══════════════════════════════════════════
+   RESPONSIVE
+   ═══════════════════════════════════════════ */
+@media (max-width: 640px) {
+  .header { padding: 10px 16px; }
+  .chat-container { padding: 16px; }
+  .input-area { padding: 12px 16px; gap: 8px; }
+  .message { max-width: 88%; padding: 12px 16px; }
+  .welcome h2 { font-size: 22px; }
+  .header-badge { display: none; }
+}
+</style>
+</head>
+<body>
+
+<div class="bg-ambient">
+  <div class="bg-orb bg-orb--1"></div>
+  <div class="bg-orb bg-orb--2"></div>
+  <div class="bg-orb bg-orb--3"></div>
+</div>
+
+<header class="header">
+  <div class="header-brand">
+    <div class="header-logo">知</div>
+    <h1>知识问答</h1>
+    <span class="header-badge">RAG + Wiki</span>
+  </div>
+  <div class="header-status">
+    <span class="status-dot"></span>
+    <span>在线</span>
+  </div>
+</header>
+
+<div class="chat-container" id="chatContainer">
+  <div class="welcome" id="welcome">
+    <div class="welcome-icon">💡</div>
+    <h2>有什么可以帮助你的？</h2>
+    <p>基于知识库的智能问答，支持 Wiki 直查、RAG 检索和流水线模式</p>
+    <div class="welcome-suggestions" id="suggestions"></div>
+  </div>
+</div>
+
+<div class="input-area">
+  <div class="input-wrapper">
+    <input
+      type="text"
+      class="input-field"
+      id="questionInput"
+      placeholder="输入问题，Enter 发送…"
+      autofocus
+    >
+    <div class="kbd-hint">
+      <span class="kbd">Enter</span> 发送
+    </div>
+  </div>
+  <button class="send-btn" id="sendBtn" onclick="sendQuestion()" aria-label="发送消息">
+    <svg viewBox="0 0 24 24">
+      <path d="M22 2L11 13"/>
+      <path d="M22 2L15 22L11 13L2 9L22 2Z"/>
+    </svg>
+  </button>
+</div>
+
+<script>
+/* ═══════════════════════════════════════════
+   CHAT LOGIC
+   ═══════════════════════════════════════════ */
+const chatContainer = document.getElementById('chatContainer');
+const questionInput = document.getElementById('questionInput');
+const sendBtn = document.getElementById('sendBtn');
+const welcome = document.getElementById('welcome');
+
+// Welcome suggestions
+const suggestionList = [
+  '公司今年的调薪预算是多少？',
+  '试用期员工有哪些权益？',
+  '最近发布了哪些产品？',
+  '人事管理制度有哪些更新？',
+];
+const suggestionsEl = document.getElementById('suggestions');
+suggestionList.forEach(text => {
+  const btn = document.createElement('button');
+  btn.className = 'welcome-suggestion';
+  btn.textContent = text;
+  btn.addEventListener('click', () => {
+    questionInput.value = text;
+    questionInput.focus();
+    sendQuestion();
+  });
+  suggestionsEl.appendChild(btn);
+});
+
+questionInput.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    sendQuestion();
+  }
+});
+
+let messageCounter = 0;
+
+function addMessage(text, role, extra = {}) {
+  welcome.style.display = 'none';
+  const div = document.createElement('div');
+  div.className = `message ${role}`;
+
+  // Stagger: 50ms between consecutive messages (keep total under 800ms)
+  div.style.animationDelay = `${messageCounter * 50}ms`;
+  messageCounter++;
+
+  if (role === 'bot') {
+    // Detect HTML-formatted answers from RAG engine
+    let html;
+    const isRagHtml = text.trim().startsWith('<div class="rag-answer">');
+    if (isRagHtml) {
+      html = text;  // Render HTML directly from RAG
+    } else {
+      html = escapeHtml(text).replace(/\n/g, '<br>');
+    }
+    // Skip source/confidence for RAG HTML (already embedded in the answer)
+    if (!isRagHtml) {
+      if (extra.source) {
+        html += `<div class="source-tag"><span>◆</span> ${escapeHtml(extra.source)}</div>`;
+      }
+      if (extra.confidence) {
+        html += `<div class="confidence">置信度: ${escapeHtml(extra.confidence)}</div>`;
+      }
+    }
+    const pq = extra.parsed_question || '';
+    const pc = extra.pages_consulted || [];
+    if (pq || pc.length > 0) {
+      const parts = [];
+      if (pq) parts.push(`📋 问题解析: ${escapeHtml(pq)}`);
+      if (pc.length > 0) parts.push(`查阅页面: ${escapeHtml(pc.join(', '))}`);
+      html += `<div class="query-detail">${parts.join(' | ')}</div>`;
+    }
+    div.innerHTML = html;
+  } else {
+    div.textContent = text;
+  }
+
+  chatContainer.appendChild(div);
+  scrollToBottom();
+}
+
+function showTyping() {
+  welcome.style.display = 'none';
+  const div = document.createElement('div');
+  div.className = 'typing-indicator';
+  div.id = 'typingIndicator';
+  div.innerHTML = '<span class="dot"></span><span class="dot"></span><span class="dot"></span>';
+  chatContainer.appendChild(div);
+  scrollToBottom();
+}
+
+function hideTyping() {
+  const el = document.getElementById('typingIndicator');
+  if (el) {
+    el.style.transition = 'opacity 120ms ease-out';
+    el.style.opacity = '0';
+    setTimeout(() => el.remove(), 120);
+  }
+}
+
+function scrollToBottom() {
+  chatContainer.scrollTo({
+    top: chatContainer.scrollHeight,
+    behavior: 'smooth'
+  });
+}
+
+function escapeHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+async function sendQuestion() {
+  const question = questionInput.value.trim();
+  if (!question) return;
+
+  addMessage(question, 'user');
+  questionInput.value = '';
+  sendBtn.disabled = true;
+  messageCounter = 0;
+  showTyping();
+
+  const mode = 'auto';  // Always use auto mode (smart wiki→RAG fallback)
+
+  try {
+    const res = await fetch('/api/query', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ question, mode, top_k: 5 })
+    });
+
+    hideTyping();
+
+    if (!res.ok) {
+      const errText = await res.text();
+      addMessage(`请求失败 (${res.status}): ${errText}`, 'error-msg');
+      sendBtn.disabled = false;
+      return;
+    }
+
+    const data = await res.json();
+    addMessage(data.answer, 'bot', {
+      source: data.source || 'unknown',
+      confidence: data.confidence || 'medium',
+      parsed_question: data.parsed_question || '',
+      pages_consulted: data.pages_consulted || []
+    });
+
+  } catch (err) {
+    hideTyping();
+    addMessage(`网络错误: ${err.message}`, 'error-msg');
+  }
+
+  sendBtn.disabled = false;
+  questionInput.focus();
+}
+</script>
+</body>
+</html>

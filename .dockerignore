@@ -1,0 +1,7 @@
+﻿__pycache__
+*.pyc
+.git
+.env
+chroma_db
+logs
+wiki-data

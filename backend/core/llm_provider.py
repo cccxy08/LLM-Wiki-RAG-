@@ -1,5 +1,6 @@
 """LLM Provider - 可插拔的 LLM 调用层（含重试、降级、并发控制）"""
 import asyncio
+import re
 import time
 import logging
 from abc import ABC, abstractmethod
@@ -39,7 +40,7 @@ class LLMProvider(ABC):
         self._retry_backoff = 2.0
 
     @abstractmethod
-    def _raw_chat(self, messages: list[dict], stream: bool = False):
+    def _raw_chat(self, messages: list[dict], stream: bool = False, label: str = ""):
         """子类实现实际的 API 调用"""
         ...
 
@@ -65,14 +66,14 @@ class LLMProvider(ABC):
             return LLMError(str(error), retryable=True, original=error)
         return LLMError(str(error), retryable=False, original=error)
 
-    def chat(self, messages: list[dict], stream: bool = False) -> str:
+    def chat(self, messages: list[dict], stream: bool = False, label: str = "") -> str:
         """同步对话 — 自动重试 + 降级"""
         last_error = None
 
         for attempt in range(self._max_retries):
             try:
                 with _global_semaphore:
-                    return self._raw_chat(messages, stream=stream)
+                    return self._raw_chat(messages, stream=stream, label=label)
             except Exception as e:
                 classified = self._classify_error(e)
                 last_error = classified
@@ -148,13 +149,17 @@ class OllamaProvider(LLMProvider):
     def model_name(self) -> str:
         return self._model
 
-    def _raw_chat(self, messages: list[dict], stream: bool = False) -> str:
+    def _raw_chat(self, messages: list[dict], stream: bool = False, label: str = "") -> str:
         response = self.client.chat.completions.create(
             model=self._model,
             messages=messages,
             stream=stream,
             temperature=0.3,
         )
+        # 打印 token 使用情况
+        if response.usage:
+            prefix = f"[LLM] {label}" if label else "[LLM]"
+            print(f"{prefix} model={self._model} prompt={response.usage.prompt_tokens} completion={response.usage.completion_tokens} total={response.usage.total_tokens}")
         return response.choices[0].message.content or ""
 
     def _raw_chat_stream(self, messages: list[dict]) -> Generator[str, None, None]:
@@ -186,16 +191,20 @@ class OpenAIProvider(LLMProvider):
     def model_name(self) -> str:
         return self._model
 
-    def _raw_chat(self, messages: list[dict], stream: bool = False) -> str:
-        import sys
-        key_prefix = (settings.openai_api_key or "")[:15] + "..." if settings.openai_api_key else "NONE"
-        print(f"[LLM-DEBUG] 调用: base_url={settings.openai_base_url} model={self._model} key={key_prefix}", file=sys.stderr)
+    def _raw_chat(self, messages: list[dict], stream: bool = False, label: str = "") -> str:
+        if settings.debug:
+            import sys
+            print(f"[LLM-DEBUG] 调用: base_url={settings.openai_base_url} model={self._model}", file=sys.stderr)
         response = self.client.chat.completions.create(
             model=self._model,
             messages=messages,
             stream=stream,
             temperature=0.3,
         )
+        # 打印 token 使用情况
+        if response.usage:
+            prefix = f"[LLM] {label}" if label else "[LLM]"
+            print(f"{prefix} model={self._model} prompt={response.usage.prompt_tokens} completion={response.usage.completion_tokens} total={response.usage.total_tokens}")
         return response.choices[0].message.content or ""
 
     def _raw_chat_stream(self, messages: list[dict]) -> Generator[str, None, None]:
@@ -227,13 +236,17 @@ class ZhipuProvider(LLMProvider):
     def model_name(self) -> str:
         return self._model
 
-    def _raw_chat(self, messages: list[dict], stream: bool = False) -> str:
+    def _raw_chat(self, messages: list[dict], stream: bool = False, label: str = "") -> str:
         response = self.client.chat.completions.create(
             model=self._model,
             messages=messages,
             stream=stream,
             temperature=0.3,
         )
+        # 打印 token 使用情况
+        if response.usage:
+            prefix = f"[LLM] {label}" if label else "[LLM]"
+            print(f"{prefix} model={self._model} prompt={response.usage.prompt_tokens} completion={response.usage.completion_tokens} total={response.usage.total_tokens}")
         return response.choices[0].message.content or ""
 
     def _raw_chat_stream(self, messages: list[dict]) -> Generator[str, None, None]:
@@ -250,21 +263,47 @@ class ZhipuProvider(LLMProvider):
 
 
 def detect_model_tier(model_name: str) -> str:
-    """检测模型能力层级: small / medium / large"""
-    small_patterns = ["7b", "8b", "3b", "1b", "qwen2.5", "qwen3", "llama3", "mistral", "phi"]
-    medium_patterns = ["14b", "32b", "qwen2.5-32b", "llama3-70b"]
-    large_patterns = ["gpt-4", "gpt-4o", "claude", "glm-4", "deepseek", "qwen-max"]
+    """检测模型能力层级: small / medium / large
+
+    优先精确匹配（短横/冒号分隔的 token），再降级子串匹配。
+    避免子串误判：如 qwen3:32b 被小模型规则 qwen3 命中。
+    """
     ml = model_name.lower()
-    for p in large_patterns:
-        if p in ml:
-            return "large"
-    for p in medium_patterns:
-        if p in ml:
-            return "medium"
-    for p in small_patterns:
-        if p in ml:
-            return "small"
-    return "medium"  # 默认中等
+
+    # 精确 token 集合（按 / - : 分隔后逐 token 匹配）
+    tokens = set(re.split(r'[-_:]', ml))
+    # 也保留完整名用于子串匹配
+    has_token = lambda *ps: any(p in tokens for p in ps)
+    contains = lambda *ps: any(p in ml for p in ps)
+
+    # === Large: 旗舰级 ===
+    if has_token("gpt-4", "gpt4") or contains("gpt-4", "gpt-4o"):
+        return "large"
+    if has_token("claude"):
+        return "large"
+    if has_token("glm-4") or contains("glm-4"):
+        return "large"
+    if contains("deepseek") and not has_token("7b", "8b", "1.3b", "1.5b"):
+        return "large"  # deepseek-chat / deepseek-v3 = large; deepseek-7b ≠ large
+    if contains("qwen-max", "qwen2.5-max"):
+        return "large"
+
+    # === Medium: 中等规模 ===
+    if has_token("14b", "32b", "70b", "72b"):
+        return "medium"
+    if has_token("qwen2.5-32b") or contains("qwen2.5-32b", "llama3-70b"):
+        return "medium"
+
+    # === Small: 小模型 ===
+    if has_token("1b", "1.5b", "1.3b", "3b", "7b", "8b"):
+        return "small"
+    if has_token("phi"):
+        return "small"
+    if contains("mistral") and not has_token("large", "medium", "nemo"):
+        return "small"  # mistral-7b 系列；mistral-large 另算
+
+    # 兜底
+    return "medium"
 
 def get_llm() -> LLMProvider:
     """工厂函数：根据配置返回对应的 LLM Provider"""
@@ -277,4 +316,3 @@ def get_llm() -> LLMProvider:
     if provider_class is None:
         raise ValueError(f"不支持的 LLM Provider: {settings.llm_provider}")
     return provider_class()
-

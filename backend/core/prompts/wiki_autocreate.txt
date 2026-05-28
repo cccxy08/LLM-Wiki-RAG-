@@ -1,0 +1,13 @@
+基于引用此页面的 Wiki 页面内容，生成一个新的 Wiki 页面「{link_title}」。
+
+要求：
+1. 必须使用 frontmatter（--- 包裹的 YAML）标注 title、type（auto-created）、created（{created_date}）、sources
+2. 标题使用 H1（#）
+3. 内容简洁，只包含引用页面中已提供的信息，不要编造
+4. 如果引用页面中完全没有关于此页面的实质性信息，回复 EMPTY_PAGE
+5. 使用 [[页面名]] 格式做交叉引用
+
+引用页面内容：
+{context_str}
+
+请输出完整的 Wiki 页面：

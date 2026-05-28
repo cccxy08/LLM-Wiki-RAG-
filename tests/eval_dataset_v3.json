@@ -1,0 +1,765 @@
+[
+  {
+    "id": 1,
+    "q": "公司全称是什么",
+    "a": "星辰科技有限公司",
+    "type": "fact",
+    "difficulty": "easy",
+    "doc": "02_公司介绍.md"
+  },
+  {
+    "id": 2,
+    "q": "公司成立于哪一年",
+    "a": "2018年",
+    "type": "fact",
+    "difficulty": "easy",
+    "doc": "02_公司介绍.md"
+  },
+  {
+    "id": 3,
+    "q": "公司总部在哪里",
+    "a": "深圳南山区科技园",
+    "type": "fact",
+    "difficulty": "easy",
+    "doc": "02_公司介绍.md"
+  },
+  {
+    "id": 4,
+    "q": "董事长是谁",
+    "a": "陈远明",
+    "type": "fact",
+    "difficulty": "easy",
+    "doc": "01_公司组织架构.txt"
+  },
+  {
+    "id": 5,
+    "q": "CEO是谁",
+    "a": "张北辰",
+    "type": "fact",
+    "difficulty": "easy",
+    "doc": "01_公司组织架构.txt"
+  },
+  {
+    "id": 6,
+    "q": "CTO是谁",
+    "a": "林浩然",
+    "type": "fact",
+    "difficulty": "easy",
+    "doc": "01_公司组织架构.txt"
+  },
+  {
+    "id": 7,
+    "q": "COO是谁",
+    "a": "赵婉清",
+    "type": "fact",
+    "difficulty": "easy",
+    "doc": "01_公司组织架构.txt"
+  },
+  {
+    "id": 8,
+    "q": "CFO是谁",
+    "a": "吴景行",
+    "type": "fact",
+    "difficulty": "easy",
+    "doc": "01_公司组织架构.txt"
+  },
+  {
+    "id": 9,
+    "q": "林晓蕾的职位是什么",
+    "a": "财务主管",
+    "type": "fact",
+    "difficulty": "easy",
+    "doc": "林晓蕾-员工档案.md"
+  },
+  {
+    "id": 10,
+    "q": "陈小明在哪个部门",
+    "a": "技术研发部",
+    "type": "fact",
+    "difficulty": "easy",
+    "doc": "陈小明-员工档案.md"
+  },
+  {
+    "id": 11,
+    "q": "AIGC事业群的负责人是谁",
+    "a": "林浩然",
+    "type": "fact",
+    "difficulty": "easy",
+    "doc": "01_公司组织架构.txt"
+  },
+  {
+    "id": 12,
+    "q": "公司总员工数大约多少",
+    "a": "约2100人",
+    "type": "fact",
+    "difficulty": "easy",
+    "doc": "01_公司组织架构.txt"
+  },
+  {
+    "id": 13,
+    "q": "2025年公司营收多少",
+    "a": "12.8亿元",
+    "type": "fact",
+    "difficulty": "easy",
+    "doc": "02_公司介绍.md"
+  },
+  {
+    "id": 14,
+    "q": "密码多久换一次",
+    "a": "90天",
+    "type": "fact",
+    "difficulty": "easy",
+    "doc": "信息安全管理制度.txt"
+  },
+  {
+    "id": 15,
+    "q": "面试分几轮",
+    "a": "三轮",
+    "type": "fact",
+    "difficulty": "easy",
+    "doc": "招聘管理制度.txt"
+  },
+  {
+    "id": 16,
+    "q": "年假几天",
+    "a": "5天",
+    "type": "fact",
+    "difficulty": "easy",
+    "doc": "08_管理制度手册.docx"
+  },
+  {
+    "id": 17,
+    "q": "春节放几天假",
+    "a": "9天",
+    "type": "fact",
+    "difficulty": "easy",
+    "doc": "2026年春节放假通知.txt"
+  },
+  {
+    "id": 18,
+    "q": "差旅住宿一线城市标准是多少",
+    "a": "600元/晚",
+    "type": "fact",
+    "difficulty": "easy",
+    "doc": "差旅报销标准更新.pdf.txt"
+  },
+  {
+    "id": 19,
+    "q": "培训经费按什么比例提取",
+    "a": "工资总额的2.5%",
+    "type": "fact",
+    "difficulty": "easy",
+    "doc": "员工培训管理办法.txt"
+  },
+  {
+    "id": 20,
+    "q": "OKR评分0.6算什么水平",
+    "a": "按计划完成",
+    "type": "fact",
+    "difficulty": "easy",
+    "doc": "OKR制定指南.txt"
+  },
+  {
+    "id": 21,
+    "q": "老板是谁",
+    "a": "陈远明（董事长）",
+    "type": "inference",
+    "difficulty": "medium",
+    "doc": "01_公司组织架构.txt",
+    "note": "中文语境'老板'通常指董事长而非CEO"
+  },
+  {
+    "id": 22,
+    "q": "管财务的负责人是谁",
+    "a": "林晓蕾",
+    "type": "inference",
+    "difficulty": "medium",
+    "doc": "林晓蕾-员工档案.md",
+    "note": "需从'财务主管'推断为财务负责人"
+  },
+  {
+    "id": 23,
+    "q": "做报销制度的那个人是谁",
+    "a": "林晓蕾",
+    "type": "inference",
+    "difficulty": "medium",
+    "doc": "林晓蕾-员工档案.md",
+    "note": "需将'制定新版差旅报销制度'与问题关联"
+  },
+  {
+    "id": 24,
+    "q": "那个做支付系统的同事叫什么",
+    "a": "陈小明",
+    "type": "inference",
+    "difficulty": "medium",
+    "doc": "陈小明-员工档案.md",
+    "note": "需将'统一支付网关'与'支付系统'关联"
+  },
+  {
+    "id": 25,
+    "q": "公司有几个事业群",
+    "a": "3个（AIGC、云计算、智能硬件）",
+    "type": "inference",
+    "difficulty": "medium",
+    "doc": "01_公司组织架构.txt",
+    "note": "需要从组织架构中数事业群数量"
+  },
+  {
+    "id": 26,
+    "q": "OKR在年度绩效考核中占多少权重",
+    "a": "30%",
+    "type": "fact",
+    "difficulty": "easy",
+    "doc": "OKR制定指南.txt"
+  },
+  {
+    "id": 27,
+    "q": "会议室预订超时未取消会怎样",
+    "a": "一个月内累计3次暂停预订权限一周",
+    "type": "fact",
+    "difficulty": "medium",
+    "doc": "会议室使用规定.txt"
+  },
+  {
+    "id": 28,
+    "q": "产品发布前需要经过什么评审",
+    "a": "技术委员会评审",
+    "type": "fact",
+    "difficulty": "medium",
+    "doc": "产品发布流程.txt"
+  },
+  {
+    "id": 29,
+    "q": "调薪预算总额是多少",
+    "a": "约1200万元",
+    "type": "fact",
+    "difficulty": "easy",
+    "doc": "2026年度调薪通知.txt"
+  },
+  {
+    "id": 30,
+    "q": "调薪什么时候生效",
+    "a": "2026年4月1日",
+    "type": "fact",
+    "difficulty": "easy",
+    "doc": "2026年度调薪通知.txt"
+  },
+  {
+    "id": 31,
+    "q": "CEO和CTO谁先入职",
+    "a": "CEO（张北辰2018年入职，CTO林浩然也是2018年，但CEO编号更早或同为创始）",
+    "type": "cross",
+    "difficulty": "hard",
+    "doc": "06_员工花名册.md",
+    "note": "需跨两人档案比较入职时间"
+  },
+  {
+    "id": 32,
+    "q": "技术委员会谁负责",
+    "a": "林浩然（CTO，主持技术评审会议）",
+    "type": "cross",
+    "difficulty": "medium",
+    "doc": "03_核心团队成员.md+技术评审会议纪要.txt",
+    "note": "需关联CTO身份和技术委员会主持角色"
+  },
+  {
+    "id": 33,
+    "q": "AIGC事业群和云计算事业群的预算占比差多少",
+    "a": "10%（AIGC 40% - 云计算 30%）",
+    "type": "cross",
+    "difficulty": "hard",
+    "doc": "04_部门配置.md",
+    "note": "需从同一文档提取两个数字并计算差值"
+  },
+  {
+    "id": 34,
+    "q": "一线城市和二线城市差旅住宿标准差多少",
+    "a": "200元/晚（600-400）",
+    "type": "cross",
+    "difficulty": "medium",
+    "doc": "差旅报销标准更新.pdf.txt",
+    "note": "需提取两个数字并计算差值"
+  },
+  {
+    "id": 35,
+    "q": "调薪预算和培训经费哪个多",
+    "a": "调薪预算更多",
+    "type": "inference",
+    "difficulty": "hard",
+    "doc": "2026年度调薪通知.txt+员工培训管理办法.txt",
+    "note": "原测试集预期有误（63万无法从文档算出），修正为只比较大小"
+  },
+  {
+    "id": 36,
+    "q": "CEO和CTO的入职年份相同吗",
+    "a": "不同，张北辰2018年入职，林浩然2019年入职",
+    "type": "cross",
+    "difficulty": "hard",
+    "doc": "06_员工花名册.md",
+    "note": "花名册明确两人入职日期不同"
+  },
+  {
+    "id": 37,
+    "q": "AIGC平台当前版本号是多少",
+    "a": "3.2.1",
+    "type": "fact",
+    "difficulty": "medium",
+    "doc": "05_AIGC平台配置.md",
+    "note": "技术细节，需从配置文件中提取"
+  },
+  {
+    "id": 38,
+    "q": "AIGC平台用的是什么向量数据库",
+    "a": "Milvus 2.5",
+    "type": "fact",
+    "difficulty": "medium",
+    "doc": "05_AIGC平台配置.md"
+  },
+  {
+    "id": 39,
+    "q": "边缘盒子StarEdge Pro V2的AI算力是多少",
+    "a": "32 TOPS (INT8)",
+    "type": "fact",
+    "difficulty": "medium",
+    "doc": "新产品发布公告.md"
+  },
+  {
+    "id": 40,
+    "q": "边缘盒子什么时候正式发货",
+    "a": "2026年6月15日",
+    "type": "fact",
+    "difficulty": "medium",
+    "doc": "新产品发布公告.md"
+  },
+  {
+    "id": 41,
+    "q": "边缘盒子多少钱一台",
+    "a": "4999元",
+    "type": "fact",
+    "difficulty": "medium",
+    "doc": "新产品发布公告.md"
+  },
+  {
+    "id": 42,
+    "q": "星火计划什么时候启动",
+    "a": "2026年6月",
+    "type": "fact",
+    "difficulty": "medium",
+    "doc": "09_内部公告.md"
+  },
+  {
+    "id": 43,
+    "q": "星火计划的报名截止日期是什么时候",
+    "a": "5月25日",
+    "type": "fact",
+    "difficulty": "medium",
+    "doc": "09_内部公告.md"
+  },
+  {
+    "id": 44,
+    "q": "陈小明还在这家公司吗",
+    "a": "不在，2025年3月已离职",
+    "type": "inference",
+    "difficulty": "medium",
+    "doc": "陈小明-员工档案.md",
+    "note": "需从档案末尾的离职信息推断"
+  },
+  {
+    "id": 45,
+    "q": "林晓蕾还在职吗",
+    "a": "是，仍在职",
+    "type": "inference",
+    "difficulty": "medium",
+    "doc": "林晓蕾-员工档案.md"
+  },
+  {
+    "id": 46,
+    "q": "公司有没有考勤制度",
+    "a": "有",
+    "type": "inference",
+    "difficulty": "easy",
+    "doc": "08_管理制度手册.docx",
+    "note": "隐含在管理制度手册中"
+  },
+  {
+    "id": 47,
+    "q": "新来的那个产品是什么",
+    "a": "StarEdge Pro V2（智能边缘盒子）",
+    "type": "inference",
+    "difficulty": "medium",
+    "doc": "新产品发布公告.md",
+    "note": "'新来的产品'需模糊匹配到最新发布的产品"
+  },
+  {
+    "id": 48,
+    "q": "灰度发布先发布给多少用户",
+    "a": "10%",
+    "type": "fact",
+    "difficulty": "easy",
+    "doc": "产品发布流程.txt"
+  },
+  {
+    "id": 49,
+    "q": "公司的合作伙伴有哪些",
+    "a": "腾讯云、华为昇腾、智谱AI、超算中心深圳",
+    "type": "fact",
+    "difficulty": "medium",
+    "doc": "02_公司介绍.md",
+    "note": "需列举多个实体"
+  },
+  {
+    "id": 50,
+    "q": "试用期最长多久",
+    "a": "6个月",
+    "type": "fact",
+    "difficulty": "easy",
+    "doc": "招聘管理制度.txt"
+  },
+  {
+    "id": 51,
+    "q": "公司2023年的营收是多少",
+    "a": "文档中未提供该数据",
+    "type": "negative",
+    "difficulty": "medium",
+    "doc": "N/A",
+    "note": "文档中没有2023年营收数据，系统应如实告知"
+  },
+  {
+    "id": 52,
+    "q": "公司有没有宠物福利政策",
+    "a": "文档中未提及该政策",
+    "type": "negative",
+    "difficulty": "easy",
+    "doc": "N/A",
+    "note": "不存在的信息，系统应如实回答不知道"
+  },
+  {
+    "id": 53,
+    "q": "华南分公司的总经理是谁",
+    "a": "贺南风",
+    "type": "fact",
+    "difficulty": "medium",
+    "doc": "01_公司组织架构.txt"
+  },
+  {
+    "id": 54,
+    "q": "法务与合规中心的总监是谁",
+    "a": "苏明理",
+    "type": "fact",
+    "difficulty": "medium",
+    "doc": "01_公司组织架构.txt"
+  },
+  {
+    "id": 55,
+    "q": "陈小明获得过什么奖",
+    "a": "2023年度优秀新人奖和2024年Q2技术创新奖",
+    "type": "fact",
+    "difficulty": "medium",
+    "doc": "陈小明-员工档案.md"
+  },
+  {
+    "id": 56,
+    "q": "AIGC平台用的基础大模型是什么",
+    "a": "Qwen2.5-72B",
+    "type": "fact",
+    "difficulty": "medium",
+    "doc": "05_AIGC平台配置.md"
+  },
+  {
+    "id": 57,
+    "q": "公司的价值观是什么",
+    "a": "务实、创新、共赢、担当",
+    "type": "fact",
+    "difficulty": "medium",
+    "doc": "02_公司介绍.md"
+  },
+  {
+    "id": 58,
+    "q": "林浩然同时负责哪两个角色",
+    "a": "CTO和AIGC事业群负责人",
+    "type": "cross",
+    "difficulty": "hard",
+    "doc": "01_公司组织架构.txt+03_核心团队成员.md",
+    "note": "需跨文档关联CTO身份和AIGC事业群负责人身份"
+  },
+  {
+    "id": 59,
+    "q": "技术评审会下次什么时候开",
+    "a": "2026年6月12日",
+    "type": "fact",
+    "difficulty": "medium",
+    "doc": "技术评审会议纪要.txt"
+  },
+  {
+    "id": 60,
+    "q": "季度OKR规划是谁的文档",
+    "a": "总裁办制定",
+    "type": "fact",
+    "difficulty": "easy",
+    "doc": "季度OKR规划.docx",
+    "note": "原测试集标为negative错误，docx第一行明确写了制定部门"
+  },
+  {
+    "q": "公司副董事长是谁",
+    "a": "李思齐",
+    "type": "fact",
+    "difficulty": "easy",
+    "doc": "01_公司组织架构.txt",
+    "id": 61
+  },
+  {
+    "q": "财务中心的总监是谁",
+    "a": "钱慎行",
+    "type": "fact",
+    "difficulty": "easy",
+    "doc": "01_公司组织架构.txt",
+    "id": 62
+  },
+  {
+    "q": "AIGC事业群预算占公司预算的多少",
+    "a": "40%",
+    "type": "fact",
+    "difficulty": "medium",
+    "doc": "04_部门配置.md",
+    "id": 63,
+    "note": "04_????.md?AIGC????budget_percent?40"
+  },
+  {
+    "q": "工作日加班工资怎么算",
+    "a": "按1.5倍工资计算",
+    "type": "fact",
+    "difficulty": "easy",
+    "doc": "08_管理制度手册.docx",
+    "id": 64
+  },
+  {
+    "q": "法定节假日加班工资是几倍",
+    "a": "3倍",
+    "type": "fact",
+    "difficulty": "easy",
+    "doc": "08_管理制度手册.docx",
+    "id": 65
+  },
+  {
+    "q": "5月15日技术评审会的主持人是谁",
+    "a": "林浩然",
+    "type": "fact",
+    "difficulty": "medium",
+    "doc": "技术评审会议纪要.txt",
+    "id": 66
+  },
+  {
+    "q": "AIGC服务占公司营收比例是多少",
+    "a": "52%",
+    "type": "fact",
+    "difficulty": "medium",
+    "doc": "04_部门配置.md",
+    "id": 67,
+    "note": "04_????.md?AIGC???revenue_share?0.52"
+  },
+  {
+    "q": "2026年基层员工普调幅度是多少",
+    "a": "上调8%",
+    "type": "fact",
+    "difficulty": "easy",
+    "doc": "2026年度调薪通知.txt",
+    "id": 68
+  },
+  {
+    "q": "公司核心工作时间是几点到几点",
+    "a": "上午10:00至下午16:30",
+    "type": "fact",
+    "difficulty": "medium",
+    "doc": "08_管理制度手册.docx",
+    "id": 69
+  },
+  {
+    "q": "公司有加班制度吗",
+    "a": "????OA??????????????",
+    "type": "inference",
+    "difficulty": "easy",
+    "doc": "08_管理制度手册.docx",
+    "note": "???????????????",
+    "id": 70
+  },
+  {
+    "q": "密码有什么要求",
+    "a": "每90天更换一次，不少于8位，包含大小写字母和数字",
+    "type": "inference",
+    "difficulty": "medium",
+    "doc": "信息安全管理制度.txt",
+    "note": "需从多条规则中归纳",
+    "id": 71
+  },
+  {
+    "q": "出差一天饭补多少钱",
+    "a": "市内50元/天，市外120元/天",
+    "type": "inference",
+    "difficulty": "medium",
+    "doc": "差旅报销标准更新.pdf.txt",
+    "note": "饭补映射到餐补标准",
+    "id": 72
+  },
+  {
+    "q": "去二线城市出差住一晚多少钱",
+    "a": "400元/晚",
+    "type": "inference",
+    "difficulty": "medium",
+    "doc": "差旅报销标准更新.pdf.txt",
+    "note": "口语映射",
+    "id": 73
+  },
+  {
+    "q": "AIGC事业群下面有几个部门",
+    "a": "3个（大模型部、AI应用部、数据工程部）",
+    "type": "inference",
+    "difficulty": "medium",
+    "doc": "01_公司组织架构.txt",
+    "note": "需从组织架构中数下设部门数量",
+    "id": 74
+  },
+  {
+    "q": "预订会议室没去也没取消会怎样",
+    "a": "??????3??????????????????????",
+    "type": "inference",
+    "difficulty": "medium",
+    "doc": "会议室使用规定.txt",
+    "note": "????????",
+    "id": 75
+  },
+  {
+    "q": "表现好的员工能多调多少薪",
+    "a": "额外获得2-5%的激励调薪",
+    "type": "inference",
+    "difficulty": "medium",
+    "doc": "2026年度调薪通知.txt",
+    "note": "表现好映射到优秀员工",
+    "id": 76
+  },
+  {
+    "q": "面试通过后多久能收到录用通知",
+    "a": "3个工作日内",
+    "type": "inference",
+    "difficulty": "medium",
+    "doc": "招聘管理制度.txt",
+    "note": "需从面试流程推断",
+    "id": 77
+  },
+  {
+    "q": "三大业务事业群的预算占比加起来是多少",
+    "a": "90%",
+    "type": "inference",
+    "difficulty": "hard",
+    "doc": "04_部门配置.md",
+    "note": "需从部门配置中找三个业务部门的预算并求和",
+    "id": 78
+  },
+  {
+    "q": "AIGC事业群下设哪些部门",
+    "a": "大模型部、AI应用部、数据工程部",
+    "type": "cross",
+    "difficulty": "hard",
+    "doc": "01_公司组织架构.txt",
+    "note": "需从组织架构中找到AIGC事业群的子部门列表",
+    "id": 79
+  },
+  {
+    "q": "外部培训经费由谁审批",
+    "a": "经部门负责人审批后报人力资源部备案",
+    "type": "cross",
+    "difficulty": "hard",
+    "doc": "员工培训管理办法.txt",
+    "note": "需从员工培训管理办法中找到审批链",
+    "id": 80
+  },
+  {
+    "q": "面试终试是谁来面",
+    "a": "部门负责人或总监",
+    "type": "cross",
+    "difficulty": "medium",
+    "doc": "招聘管理制度.txt",
+    "note": "需从面试流程中找到终试的面试官",
+    "id": 81
+  },
+  {
+    "q": "2025年研发投入金额大概多少",
+    "a": "约4.86亿元",
+    "type": "cross",
+    "difficulty": "hard",
+    "doc": "02_公司介绍.md",
+    "note": "需从公司介绍中提取营收和研发占比进行计算",
+    "id": 82
+  },
+  {
+    "q": "智能硬件事业部有哪些产品",
+    "a": "AI边缘盒子、工业质检相机、智能语音终端",
+    "type": "cross",
+    "difficulty": "hard",
+    "doc": "04_部门配置.md",
+    "note": "需从部门配置中找到智能硬件事业部的项目列表",
+    "id": 83
+  },
+  {
+    "q": "公司有哪几个分公司",
+    "a": "华东（上海）、华南（深圳）、华北（北京）、西南（成都）",
+    "type": "cross",
+    "difficulty": "medium",
+    "doc": "01_公司组织架构.txt",
+    "note": "需从组织架构中列出所有区域分公司",
+    "id": 84
+  },
+  {
+    "q": "2026年春节后第一天上班是哪天",
+    "a": "2026年2月18日（初九）",
+    "type": "cross",
+    "difficulty": "medium",
+    "doc": "2026年春节放假通知.txt",
+    "note": "需从放假通知推断节后上班日期",
+    "id": 85
+  },
+  {
+    "q": "公司给员工提供免费午餐吗",
+    "a": "文档中未提及该福利",
+    "type": "negative",
+    "difficulty": "easy",
+    "doc": "N/A",
+    "note": "所有文档中均未提及餐补福利",
+    "id": 86
+  },
+  {
+    "q": "公司的股票代码是多少",
+    "a": "文档中未提供该信息",
+    "type": "negative",
+    "difficulty": "easy",
+    "doc": "N/A",
+    "note": "公司未上市",
+    "id": 87
+  },
+  {
+    "q": "公司2024年的营收是多少",
+    "a": "文档中未提供该数据",
+    "type": "negative",
+    "difficulty": "medium",
+    "doc": "N/A",
+    "note": "文档中只有2025年营收数据",
+    "id": 88
+  },
+  {
+    "q": "公司2025年的净利润是多少",
+    "a": "文档中未提供该数据",
+    "type": "negative",
+    "difficulty": "medium",
+    "doc": "N/A",
+    "note": "无净利润数据",
+    "id": 89
+  },
+  {
+    "q": "公司的CEO是什么星座",
+    "a": "文档中未提供该信息",
+    "type": "negative",
+    "difficulty": "easy",
+    "doc": "N/A",
+    "note": "文档中只有入职日期无生日",
+    "id": 90
+  }
+]

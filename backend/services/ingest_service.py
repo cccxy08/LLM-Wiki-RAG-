@@ -11,8 +11,8 @@ class IngestService:
     """文档摄入服务"""
 
     def __init__(self):
-        self.wiki = WikiEngine()
-        self.rag = RAGEngine()
+        self.wiki = WikiEngine.get_instance()
+        self.rag = RAGEngine.get_instance()
 
     def ingest_file(self, file_content: bytes, filename: str) -> dict:
         """

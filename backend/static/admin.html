@@ -1,0 +1,1528 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CodeXFiles 管理后台</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    background: #f0f2f5;
+    display: flex;
+    height: 100vh;
+    overflow: hidden;
+  }
+
+  /* ====== Sidebar ====== */
+  .sidebar {
+    width: 240px;
+    min-width: 240px;
+    background: #1e293b;
+    color: #cbd5e1;
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
+    transition: transform 0.3s;
+    z-index: 100;
+  }
+  .sidebar-header {
+    padding: 20px 18px;
+    border-bottom: 1px solid #334155;
+  }
+  .sidebar-header h2 {
+    font-size: 18px;
+    font-weight: 700;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .sidebar-header .subtitle {
+    font-size: 11px;
+    color: #94a3b8;
+    margin-top: 4px;
+  }
+  .sidebar-nav {
+    flex: 1;
+    padding: 12px 0;
+    overflow-y: auto;
+  }
+  .sidebar-nav .nav-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 18px;
+    cursor: pointer;
+    font-size: 14px;
+    color: #94a3b8;
+    border-left: 3px solid transparent;
+    transition: all 0.2s;
+    user-select: none;
+  }
+  .sidebar-nav .nav-item:hover {
+    background: rgba(255,255,255,0.05);
+    color: #e2e8f0;
+  }
+  .sidebar-nav .nav-item.active {
+    background: rgba(26,115,232,0.15);
+    color: #60a5fa;
+    border-left-color: #1a73e8;
+  }
+  .sidebar-nav .nav-item .nav-icon { font-size: 18px; width: 24px; text-align: center; }
+
+  /* ====== Main Content ====== */
+  .main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .top-bar {
+    background: #fff;
+    padding: 14px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid #e0e0e0;
+    flex-shrink: 0;
+  }
+  .top-bar h1 {
+    font-size: 20px;
+    font-weight: 600;
+    color: #1f1f1f;
+  }
+  .health-indicator {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    color: #666;
+  }
+  .health-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: #ccc;
+    animation: pulse-dot 2s infinite;
+  }
+  .health-dot.online { background: #34a853; }
+  .health-dot.offline { background: #ea4335; animation: none; }
+  .health-dot.checking { background: #fbbc04; }
+  @keyframes pulse-dot {
+    0%,100% { box-shadow: 0 0 0 0 rgba(52,168,83,0.4); }
+    50% { box-shadow: 0 0 0 6px rgba(52,168,83,0); }
+  }
+
+  .content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 24px;
+  }
+
+  /* ====== Sidebar Toggle (Mobile) ====== */
+  .sidebar-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.4);
+    z-index: 99;
+  }
+  .menu-toggle {
+    display: none;
+    background: none;
+    border: none;
+    font-size: 24px;
+    cursor: pointer;
+    padding: 4px;
+    color: #1f1f1f;
+    margin-right: 12px;
+  }
+
+  /* ====== Panels ====== */
+  .panel { display: none; }
+  .panel.active { display: block; }
+
+  /* ====== Cards ====== */
+  .stat-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+  .stat-card {
+    background: #fff;
+    border-radius: 12px;
+    padding: 20px 24px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    transition: transform 0.2s, box-shadow 0.2s;
+  }
+  .stat-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  }
+  .stat-card .stat-icon {
+    font-size: 28px;
+    margin-bottom: 8px;
+  }
+  .stat-card .stat-value {
+    font-size: 32px;
+    font-weight: 700;
+    color: #1f1f1f;
+  }
+  .stat-card .stat-label {
+    font-size: 13px;
+    color: #666;
+    margin-top: 4px;
+  }
+  .stat-card .stat-sub {
+    font-size: 12px;
+    color: #999;
+    margin-top: 2px;
+  }
+
+  /* ====== Section Cards ====== */
+  .section-card {
+    background: #fff;
+    border-radius: 12px;
+    padding: 24px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    margin-bottom: 16px;
+  }
+  .section-card h3 {
+    font-size: 16px;
+    font-weight: 600;
+    color: #1f1f1f;
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  /* ====== Wiki Split Layout ====== */
+  .wiki-layout {
+    display: flex;
+    gap: 16px;
+    height: calc(100vh - 180px);
+    min-height: 500px;
+  }
+  .wiki-left {
+    width: 40%;
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .wiki-right {
+    flex: 1;
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .wiki-search-bar {
+    padding: 12px 16px;
+    border-bottom: 1px solid #e0e0e0;
+    flex-shrink: 0;
+  }
+  .wiki-search-bar input {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid #dadce0;
+    border-radius: 8px;
+    font-size: 13px;
+    outline: none;
+  }
+  .wiki-search-bar input:focus { border-color: #1a73e8; }
+  .wiki-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 8px;
+  }
+  .wiki-list-item {
+    padding: 10px 12px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 13px;
+    transition: background 0.15s;
+    border: 1px solid transparent;
+  }
+  .wiki-list-item:hover { background: #f1f5f9; }
+  .wiki-list-item.active { background: #e8f0fe; border-color: #1a73e8; }
+  .wiki-list-item .page-title { font-weight: 600; color: #1f1f1f; }
+  .wiki-list-item .page-meta { font-size: 11px; color: #999; margin-top: 2px; }
+  .wiki-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    color: #999;
+    font-size: 13px;
+    gap: 8px;
+  }
+  .wiki-content-area {
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px 24px;
+  }
+  .wiki-content-area .page-title-display {
+    font-size: 22px;
+    font-weight: 700;
+    color: #1f1f1f;
+    margin-bottom: 20px;
+    padding-bottom: 12px;
+    border-bottom: 2px solid #e8f0fe;
+  }
+  .wiki-rendered h1 { font-size: 22px; margin: 16px 0 10px; }
+  .wiki-rendered h2 { font-size: 18px; margin: 14px 0 8px; }
+  .wiki-rendered h3 { font-size: 15px; margin: 12px 0 6px; }
+  .wiki-rendered p { margin: 8px 0; line-height: 1.7; }
+  .wiki-rendered ul, .wiki-rendered ol { margin: 8px 0; padding-left: 20px; }
+  .wiki-rendered li { margin: 4px 0; line-height: 1.6; }
+  .wiki-rendered strong { color: #1f1f1f; }
+  .wiki-rendered .cross-ref {
+    color: #1a73e8;
+    cursor: pointer;
+    text-decoration: underline;
+    text-decoration-style: dotted;
+    text-underline-offset: 3px;
+  }
+  .wiki-rendered .cross-ref:hover { color: #1557b0; }
+  .wiki-right-header {
+    padding: 12px 24px;
+    border-bottom: 1px solid #e0e0e0;
+    font-size: 13px;
+    color: #999;
+    flex-shrink: 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  /* Lint Section */
+  .lint-area {
+    padding: 16px 24px;
+    border-top: 1px solid #e0e0e0;
+    flex-shrink: 0;
+    max-height: 200px;
+    overflow-y: auto;
+  }
+  .lint-issue {
+    padding: 8px 10px;
+    margin: 4px 0;
+    border-radius: 6px;
+    font-size: 12px;
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+  }
+  .lint-issue.error { background: #fce8e6; border-left: 3px solid #ea4335; }
+  .lint-issue.warning { background: #fef7e0; border-left: 3px solid #fbbc04; }
+  .lint-issue.info { background: #e8f0fe; border-left: 3px solid #1a73e8; }
+  .lint-issue .severity-badge {
+    font-size: 10px;
+    padding: 1px 6px;
+    border-radius: 8px;
+    font-weight: 600;
+    flex-shrink: 0;
+  }
+  .lint-issue.error .severity-badge { background: #ea4335; color: #fff; }
+  .lint-issue.warning .severity-badge { background: #fbbc04; color: #1f1f1f; }
+  .lint-issue.info .severity-badge { background: #1a73e8; color: #fff; }
+
+  /* ====== Upload Zone ====== */
+  .upload-zone {
+    border: 2px dashed #cbd5e1;
+    border-radius: 12px;
+    padding: 60px 40px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s;
+    background: #fafbfc;
+  }
+  .upload-zone:hover, .upload-zone.drag-over {
+    border-color: #1a73e8;
+    background: #e8f0fe;
+  }
+  .upload-zone .upload-icon { font-size: 48px; margin-bottom: 12px; }
+  .upload-zone .upload-text { font-size: 15px; color: #444; }
+  .upload-zone .upload-hint { font-size: 12px; color: #999; margin-top: 8px; }
+  .upload-result {
+    margin-top: 16px;
+    padding: 16px;
+    background: #f0fdf4;
+    border: 1px solid #86efac;
+    border-radius: 10px;
+    font-size: 13px;
+  }
+  .upload-result.error {
+    background: #fef2f2;
+    border-color: #fecaca;
+  }
+  .upload-result h4 { margin-bottom: 8px; color: #166534; }
+  .upload-result.error h4 { color: #991b1b; }
+  .upload-result ul { margin-left: 18px; }
+
+  /* ====== Progress Bar ====== */
+  .progress-bar-container {
+    width: 100%;
+    height: 6px;
+    background: #e0e0e0;
+    border-radius: 3px;
+    margin-top: 12px;
+    overflow: hidden;
+  }
+  .progress-bar-fill {
+    height: 100%;
+    background: #1a73e8;
+    border-radius: 3px;
+    width: 0%;
+    transition: width 0.3s;
+  }
+
+  /* ====== Q&A ====== */
+  .qa-history {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    max-height: calc(100vh - 260px);
+    overflow-y: auto;
+    margin-bottom: 16px;
+    min-height: 100px;
+  }
+  .qa-card {
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    padding: 16px 20px;
+  }
+  .qa-card .qa-question {
+    font-weight: 600;
+    color: #1a73e8;
+    margin-bottom: 10px;
+    font-size: 14px;
+  }
+  .qa-card .qa-answer {
+    font-size: 14px;
+    line-height: 1.7;
+    color: #1f1f1f;
+    margin-bottom: 10px;
+  }
+  .qa-card .qa-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+    font-size: 12px;
+  }
+  .qa-badge {
+    display: inline-block;
+    padding: 2px 10px;
+    border-radius: 10px;
+    font-size: 11px;
+    font-weight: 500;
+  }
+  .qa-badge.source-wiki { background: #e8f0fe; color: #1a73e8; }
+  .qa-badge.source-rag { background: #fef7e0; color: #92400e; }
+  .qa-badge.source-agent { background: #f0fdf4; color: #166534; }
+  .qa-badge.conf-high { background: #dcfce7; color: #166534; }
+  .qa-badge.conf-medium { background: #fef9c3; color: #854d0e; }
+  .qa-badge.conf-low { background: #fee2e2; color: #991b1b; }
+  .qa-sources { font-size: 12px; color: #666; margin-top: 6px; }
+  .qa-input-row {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+  }
+  .qa-input-row input {
+    flex: 1;
+    padding: 10px 16px;
+    border: 1px solid #dadce0;
+    border-radius: 24px;
+    font-size: 14px;
+    outline: none;
+  }
+  .qa-input-row input:focus { border-color: #1a73e8; }
+  .qa-input-row select {
+    padding: 8px 12px;
+    border: 1px solid #dadce0;
+    border-radius: 20px;
+    font-size: 13px;
+    outline: none;
+    background: #fff;
+    cursor: pointer;
+  }
+  .qa-input-row button {
+    background: #1a73e8;
+    color: #fff;
+    border: none;
+    border-radius: 24px;
+    padding: 10px 20px;
+    font-size: 14px;
+    cursor: pointer;
+    transition: background 0.2s;
+    white-space: nowrap;
+  }
+  .qa-input-row button:hover { background: #1557b0; }
+  .qa-input-row button:disabled { background: #ccc; cursor: not-allowed; }
+
+  /* ====== Timeline ====== */
+  .timeline { position: relative; padding-left: 32px; }
+  .timeline::before {
+    content: '';
+    position: absolute;
+    left: 14px;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: #e0e0e0;
+  }
+  .timeline-item {
+    position: relative;
+    margin-bottom: 20px;
+    padding: 12px 16px;
+    background: #fff;
+    border-radius: 10px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  }
+  .timeline-item::before {
+    content: '';
+    position: absolute;
+    left: -24px;
+    top: 16px;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: #1a73e8;
+    border: 2px solid #fff;
+    box-shadow: 0 0 0 2px #1a73e8;
+  }
+  .timeline-item .tl-time {
+    font-size: 12px;
+    color: #999;
+    margin-bottom: 4px;
+  }
+  .timeline-item .tl-desc {
+    font-size: 14px;
+    color: #1f1f1f;
+  }
+
+  /* ====== Shared Utilities ====== */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 16px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    border: none;
+    transition: all 0.2s;
+  }
+  .btn-primary { background: #1a73e8; color: #fff; }
+  .btn-primary:hover { background: #1557b0; }
+  .btn-secondary { background: #e8f0fe; color: #1a73e8; }
+  .btn-secondary:hover { background: #d2e3fc; }
+  .btn-outline { background: #fff; color: #1a73e8; border: 1px solid #1a73e8; }
+  .btn-outline:hover { background: #e8f0fe; }
+  .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  .btn-sm { padding: 4px 10px; font-size: 12px; }
+
+  .spinner {
+    display: inline-block;
+    width: 20px; height: 20px;
+    border: 2px solid #e0e0e0;
+    border-top-color: #1a73e8;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+  .spinner-lg { width: 36px; height: 36px; border-width: 3px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .loading-block {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 40px;
+    color: #999;
+    gap: 12px;
+    font-size: 13px;
+  }
+
+  .error-block {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 40px;
+    color: #c5221f;
+    gap: 10px;
+    font-size: 13px;
+  }
+  .error-block button { margin-top: 4px; }
+
+  .empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 40px;
+    color: #999;
+    gap: 8px;
+    font-size: 13px;
+  }
+  .empty-state .empty-icon { font-size: 36px; }
+
+  .tooltip-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px; height: 18px;
+    border-radius: 50%;
+    background: #e0e0e0;
+    font-size: 11px;
+    color: #666;
+    cursor: help;
+    font-weight: 700;
+  }
+
+  /* ====== Log Filter ====== */
+  .log-filter-row {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    margin-bottom: 16px;
+  }
+
+  /* ====== Skeleton Loading ====== */
+  .skeleton { background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%); background-size: 200% 100%; animation: shimmer 1.5s infinite; border-radius: 4px; }
+  @keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
+  .skeleton-card { height: 100px; border-radius: 12px; }
+  .skeleton-line { height: 14px; margin-bottom: 8px; }
+  .skeleton-line.short { width: 60%; }
+
+  /* ====== Responsive ====== */
+  @media (max-width: 768px) {
+    .sidebar {
+      position: fixed;
+      top: 0; left: 0; bottom: 0;
+      transform: translateX(-100%);
+    }
+    .sidebar.open { transform: translateX(0); }
+    .sidebar-overlay.show { display: block; }
+    .menu-toggle { display: block; }
+    .stat-grid { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
+    .wiki-layout { flex-direction: column; height: auto; }
+    .wiki-left, .wiki-right { width: 100%; min-height: 300px; }
+    .top-bar { padding: 10px 16px; }
+    .content { padding: 16px; }
+  }
+
+  /* Scrollbar styling */
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+</style>
+</head>
+<body>
+
+<!-- Mobile overlay -->
+<div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
+
+<!-- Sidebar -->
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-header">
+    <h2>⚙️ CodeXFiles</h2>
+    <div class="subtitle">管理后台 v1.0</div>
+  </div>
+  <nav class="sidebar-nav">
+    <div class="nav-item active" data-tab="dashboard" onclick="switchTab('dashboard')">
+      <span class="nav-icon">📊</span> 仪表盘
+    </div>
+    <div class="nav-item" data-tab="wiki" onclick="switchTab('wiki')">
+      <span class="nav-icon">📚</span> Wiki 管理
+    </div>
+    <div class="nav-item" data-tab="ingest" onclick="switchTab('ingest')">
+      <span class="nav-icon">📥</span> 文档摄入
+    </div>
+    <div class="nav-item" data-tab="qa" onclick="switchTab('qa')">
+      <span class="nav-icon">💬</span> 问答测试
+    </div>
+    <div class="nav-item" data-tab="logs" onclick="switchTab('logs')">
+      <span class="nav-icon">📋</span> 系统日志
+    </div>
+  </nav>
+</aside>
+
+<!-- Main Content -->
+<div class="main">
+  <div class="top-bar">
+    <div style="display:flex;align-items:center;">
+      <button class="menu-toggle" onclick="toggleSidebar()" title="菜单">☰</button>
+      <h1>CodeXFiles 管理后台</h1>
+    </div>
+    <div class="health-indicator">
+      <span class="health-dot checking" id="healthDot" title="正在检查系统状态..."></span>
+      <span id="healthText">检查中...</span>
+      <span style="margin-left:4px;" class="tooltip-icon" title="系统健康状态自动检测，每30秒刷新一次">?</span>
+    </div>
+  </div>
+
+  <div class="content" id="contentArea">
+
+    <!-- ==================== Panel: Dashboard ==================== -->
+    <div class="panel active" id="panel-dashboard">
+      <div class="stat-grid" id="statGrid">
+        <div class="stat-card"><div class="skeleton skeleton-card"></div></div>
+        <div class="stat-card"><div class="skeleton skeleton-card"></div></div>
+        <div class="stat-card"><div class="skeleton skeleton-card"></div></div>
+        <div class="stat-card"><div class="skeleton skeleton-card"></div></div>
+      </div>
+
+      <div class="section-card">
+        <h3>📜 最近操作日志</h3>
+        <div id="recentOps" class="loading-block"><div class="spinner"></div><span>加载中...</span></div>
+      </div>
+    </div>
+
+    <!-- ==================== Panel: Wiki Management ==================== -->
+    <div class="panel" id="panel-wiki">
+      <div class="wiki-layout">
+        <div class="wiki-left">
+          <div class="wiki-search-bar">
+            <input type="text" id="wikiSearchInput" placeholder="🔍 搜索 Wiki 页面..." oninput="filterWikiPages()">
+          </div>
+          <div class="wiki-list" id="wikiPageList">
+            <div class="loading-block"><div class="spinner"></div><span>加载页面列表...</span></div>
+          </div>
+        </div>
+        <div class="wiki-right">
+          <div class="wiki-right-header">
+            <span id="wikiPageMeta">选择一个页面查看内容</span>
+            <button class="btn btn-sm btn-outline" onclick="loadLintResults()" id="lintBtn" title="扫描 Wiki 中的问题，如孤立页面、过期页面、断链等">🔍 Lint 检查</button>
+          </div>
+          <div class="wiki-content-area" id="wikiContentArea">
+            <div class="wiki-empty">
+              <span style="font-size:36px;">📄</span>
+              <span>点击左侧页面查看内容</span>
+            </div>
+          </div>
+          <div class="lint-area" id="lintArea" style="display:none;"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== Panel: Document Ingestion ==================== -->
+    <div class="panel" id="panel-ingest">
+      <div class="section-card">
+        <h3>📄 上传文档 <span class="tooltip-icon" title="支持 .txt, .md, .pdf 等文档格式，系统会自动解析并生成 Wiki 页面">?</span></h3>
+        <div class="upload-zone" id="uploadZone"
+             onclick="document.getElementById('fileInput').click()"
+             ondragover="handleDragOver(event)"
+             ondragleave="handleDragLeave(event)"
+             ondrop="handleDrop(event)">
+          <div class="upload-icon">📤</div>
+          <div class="upload-text">拖拽文件到此处，或点击选择文件</div>
+          <div class="upload-hint">支持 .txt, .md, .pdf 等文档格式</div>
+          <input type="file" id="fileInput" style="display:none;" onchange="handleFileSelect(event)" accept=".txt,.md,.pdf,.docx,.html,.csv" multiple>
+        </div>
+        <div class="progress-bar-container" id="progressContainer" style="display:none;">
+          <div class="progress-bar-fill" id="progressFill"></div>
+        </div>
+        <div style="margin-top:8px;font-size:12px;color:#999;text-align:center;" id="progressLabel" hidden></div>
+        <div id="ingestResult" hidden></div>
+      </div>
+    </div>
+
+    <!-- ==================== Panel: Q&A Testing ==================== -->
+    <div class="panel" id="panel-qa">
+      <div class="section-card">
+        <h3>💬 问答测试 <span class="tooltip-icon" title="在此测试知识库问答效果，支持选择不同问答模式">?</span></h3>
+        <div class="qa-history" id="qaHistory">
+          <div class="empty-state">
+            <div class="empty-icon">💬</div>
+            <span>输入问题开始测试问答</span>
+            <span style="font-size:11px;color:#bbb;">可切换 auto / agent / pipeline 模式</span>
+          </div>
+        </div>
+        <div class="qa-input-row">
+          <select id="qaModeSelect">
+            <option value="auto">🤖 自动</option>
+            <option value="pipeline">🔗 流水线</option>
+          </select>
+          <input type="text" id="qaQuestionInput" placeholder="输入测试问题..." onkeydown="if(event.key==='Enter')sendQaQuestion()">
+          <button id="qaSendBtn" onclick="sendQaQuestion()">发送</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== Panel: System Logs ==================== -->
+    <div class="panel" id="panel-logs">
+      <div class="section-card">
+        <h3>📋 系统操作日志</h3>
+        <div class="log-filter-row">
+          <button class="btn btn-sm btn-secondary" onclick="refreshLogs()">🔄 刷新</button>
+          <span style="font-size:12px;color:#999;">共 <strong id="logCount">0</strong> 条记录</span>
+        </div>
+        <div class="timeline" id="logTimeline">
+          <div class="loading-block"><div class="spinner"></div><span>加载日志中...</span></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+// ============================
+// Global State
+// ============================
+const STATE = {
+  currentTab: 'dashboard',
+  wikiPages: [],
+  wikiCategories: {},
+  selectedWikiPage: null,
+  qaHistory: [],
+  healthCheckInterval: null,
+};
+
+// ============================
+// Initialization
+// ============================
+function init() {
+  const savedTab = localStorage.getItem('codexfiles_admin_tab') || 'dashboard';
+  switchTab(savedTab);
+  checkHealth();
+  STATE.healthCheckInterval = setInterval(checkHealth, 30000);
+}
+
+// ============================
+// Sidebar & Navigation
+// ============================
+function switchTab(tabName) {
+  STATE.currentTab = tabName;
+  localStorage.setItem('codexfiles_admin_tab', tabName);
+
+  // Update nav
+  document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+  const navItem = document.querySelector(`.nav-item[data-tab="${tabName}"]`);
+  if (navItem) navItem.classList.add('active');
+
+  // Update panels
+  document.querySelectorAll('.panel').forEach(el => el.classList.remove('active'));
+  const panel = document.getElementById(`panel-${tabName}`);
+  if (panel) panel.classList.add('active');
+
+  // Close mobile sidebar
+  closeSidebar();
+
+  // Load panel data
+  switch (tabName) {
+    case 'dashboard': loadDashboard(); break;
+    case 'wiki': loadWikiPages(); break;
+    case 'ingest': break; // No auto-load needed
+    case 'qa': break; // No auto-load needed
+    case 'logs': refreshLogs(); break;
+  }
+}
+
+function toggleSidebar() {
+  const sidebar = document.getElementById('sidebar');
+  const overlay = document.getElementById('sidebarOverlay');
+  sidebar.classList.toggle('open');
+  overlay.classList.toggle('show');
+}
+
+function closeSidebar() {
+  document.getElementById('sidebar').classList.remove('open');
+  document.getElementById('sidebarOverlay').classList.remove('show');
+}
+
+// ============================
+// Health Check
+// ============================
+async function checkHealth() {
+  const dot = document.getElementById('healthDot');
+  const text = document.getElementById('healthText');
+  dot.className = 'health-dot checking';
+  text.textContent = '检查中...';
+
+  try {
+    const res = await fetch('/api/health');
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    dot.className = 'health-dot online';
+    dot.title = '系统运行正常';
+    const uptime = formatUptime(data.uptime_seconds || 0);
+    text.textContent = `运行正常 · ${data.llm_provider || 'N/A'} · ${data.wiki_pages || 0} 页面 · 运行 ${uptime}`;
+  } catch (err) {
+    dot.className = 'health-dot offline';
+    dot.title = '系统无法连接';
+    text.textContent = '连接失败 - 点击重试';
+    text.style.cursor = 'pointer';
+    text.onclick = checkHealth;
+  }
+}
+
+function formatUptime(seconds) {
+  const d = Math.floor(seconds / 86400);
+  const h = Math.floor((seconds % 86400) / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  const parts = [];
+  if (d > 0) parts.push(`${d}天`);
+  if (h > 0) parts.push(`${h}时`);
+  if (m > 0) parts.push(`${m}分`);
+  return parts.join('') || '<1分';
+}
+
+// ============================
+// Panel: Dashboard
+// ============================
+async function loadDashboard() {
+  const statGrid = document.getElementById('statGrid');
+  const recentOps = document.getElementById('recentOps');
+
+  statGrid.innerHTML = `
+    <div class="stat-card"><div class="skeleton skeleton-card"></div></div>
+    <div class="stat-card"><div class="skeleton skeleton-card"></div></div>
+    <div class="stat-card"><div class="skeleton skeleton-card"></div></div>
+    <div class="stat-card"><div class="skeleton skeleton-card"></div></div>
+  `;
+  recentOps.innerHTML = '<div class="loading-block"><div class="spinner"></div><span>加载中...</span></div>';
+
+  try {
+    const res = await fetch('/api/admin/dashboard');
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+
+    const wiki = data.wiki || {};
+    const rag = data.rag || {};
+    const cache = data.cache || {};
+
+    const hitRate = cache.hit_rate != null
+      ? (typeof cache.hit_rate === 'number' ? (cache.hit_rate * 100).toFixed(1) : cache.hit_rate)
+      : '—';
+
+    statGrid.innerHTML = `
+      <div class="stat-card">
+        <div class="stat-icon">📚</div>
+        <div class="stat-value">${wiki.total_pages ?? '—'}</div>
+        <div class="stat-label">Wiki 页面总数</div>
+        <div class="stat-sub">
+          ${wiki.orphan_pages != null ? `孤立: ${wiki.orphan_pages}` : ''}
+          ${wiki.stale_pages != null ? ` · 过期: ${wiki.stale_pages}` : ''}
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon">🧠</div>
+        <div class="stat-value">${rag.total_documents ?? '—'}</div>
+        <div class="stat-label">RAG 向量文档数</div>
+        <div class="stat-sub">${rag.last_indexed ? '最近索引: ' + rag.last_indexed : '暂无索引记录'}</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon">⚡</div>
+        <div class="stat-value">${hitRate}%</div>
+        <div class="stat-label">缓存命中率</div>
+        <div class="stat-sub">命中 ${cache.hits ?? 0} / 总查询 ${(cache.hits ?? 0) + (cache.misses ?? 0)}</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon">⏱️</div>
+        <div class="stat-value" id="uptimeValue">—</div>
+        <div class="stat-label">系统运行时间</div>
+        <div class="stat-sub">${wiki.last_ingest ? '最近摄入: ' + wiki.last_ingest : '暂无摄入记录'}</div>
+      </div>
+    `;
+
+    // Fetch uptime separately
+    try {
+      const hRes = await fetch('/api/health');
+      if (hRes.ok) {
+        const hData = await hRes.json();
+        document.getElementById('uptimeValue').textContent = formatUptime(hData.uptime_seconds || 0);
+      }
+    } catch (e) { document.getElementById('uptimeValue').textContent = '—'; }
+
+    // Recent operations
+    const ops = data.recent_operations || [];
+    if (ops.length === 0) {
+      recentOps.innerHTML = '<div class="empty-state"><span style="font-size:28px;">📭</span><span>暂无操作日志</span></div>';
+    } else {
+      recentOps.innerHTML = ops.slice(0, 10).map(op =>
+        `<div style="padding:8px 0;border-bottom:1px solid #f0f0f0;font-size:13px;color:#444;">${escapeHtml(op)}</div>`
+      ).join('');
+    }
+
+  } catch (err) {
+    statGrid.innerHTML = '';
+    showError(statGrid, '加载仪表盘失败', err.message, loadDashboard);
+    recentOps.innerHTML = '';
+  }
+}
+
+// ============================
+// Panel: Wiki Management
+// ============================
+async function loadWikiPages() {
+  const listEl = document.getElementById('wikiPageList');
+  listEl.innerHTML = '<div class="loading-block"><div class="spinner"></div><span>加载页面列表...</span></div>';
+
+  try {
+    const res = await fetch('/api/wiki/index');
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+
+    STATE.wikiCategories = data.categories || {};
+    STATE.wikiPages = [];
+
+    // Flatten all categories
+    for (const [cat, pages] of Object.entries(STATE.wikiCategories)) {
+      for (const page of pages) {
+        STATE.wikiPages.push({ ...page, category: cat });
+      }
+    }
+
+    renderWikiPageList(STATE.wikiPages);
+
+  } catch (err) {
+    showError(listEl, '加载 Wiki 页面列表失败', err.message, loadWikiPages);
+  }
+}
+
+function renderWikiPageList(pages) {
+  const listEl = document.getElementById('wikiPageList');
+  if (pages.length === 0) {
+    listEl.innerHTML = '<div class="wiki-empty"><span style="font-size:28px;">📭</span><span>暂无 Wiki 页面</span><span style="font-size:11px;color:#bbb;">导入文档后会自动生成页面</span></div>';
+    return;
+  }
+
+  listEl.innerHTML = pages.map(p => {
+    const isActive = STATE.selectedWikiPage && STATE.selectedWikiPage.title === p.title;
+    return `
+      <div class="wiki-list-item ${isActive ? 'active' : ''}" onclick="selectWikiPage('${escapeAttr(p.title)}')">
+        <div class="page-title">${escapeHtml(p.title)}</div>
+        <div class="page-meta">${escapeHtml(p.category || '全部')} · ${escapeHtml(p.updated || '—')}</div>
+      </div>
+    `;
+  }).join('');
+}
+
+function filterWikiPages() {
+  const query = document.getElementById('wikiSearchInput').value.toLowerCase().trim();
+  if (!query) {
+    renderWikiPageList(STATE.wikiPages);
+    return;
+  }
+  const filtered = STATE.wikiPages.filter(p =>
+    p.title.toLowerCase().includes(query) ||
+    (p.summary && p.summary.toLowerCase().includes(query))
+  );
+  renderWikiPageList(filtered);
+}
+
+async function selectWikiPage(title) {
+  STATE.selectedWikiPage = { title };
+  renderWikiPageList(STATE.wikiPages);
+
+  const contentArea = document.getElementById('wikiContentArea');
+  const metaEl = document.getElementById('wikiPageMeta');
+  contentArea.innerHTML = '<div class="loading-block"><div class="spinner"></div><span>加载页面内容...</span></div>';
+  metaEl.textContent = `正在加载: ${title}`;
+
+  try {
+    const res = await fetch(`/api/wiki/page/${encodeURIComponent(title)}`);
+    if (!res.ok) {
+      if (res.status === 404) {
+        contentArea.innerHTML = '<div class="empty-state"><span style="font-size:28px;">❓</span><span>页面不存在</span></div>';
+        metaEl.textContent = '页面不存在';
+        return;
+      }
+      throw new Error(`HTTP ${res.status}`);
+    }
+    const data = await res.json();
+    STATE.selectedWikiPage = data;
+
+    metaEl.textContent = `页面: ${data.title}`;
+
+    const html = renderMarkdown(data.content || '');
+    const crossRefs = data.cross_refs || [];
+    let refsHtml = '';
+    if (crossRefs.length > 0) {
+      refsHtml = `
+        <div style="margin-top:24px;padding-top:16px;border-top:1px solid #e0e0e0;">
+          <strong style="font-size:13px;color:#666;">交叉引用:</strong>
+          <div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:6px;">
+            ${crossRefs.map(ref => `<span class="qa-badge source-wiki" style="cursor:pointer;" onclick="selectWikiPage('${escapeAttr(ref)}')">📄 ${escapeHtml(ref)}</span>`).join('')}
+          </div>
+        </div>
+      `;
+    }
+
+    contentArea.innerHTML = `
+      <div class="page-title-display">${escapeHtml(data.title)}</div>
+      <div class="wiki-rendered">${html}</div>
+      ${refsHtml}
+    `;
+
+  } catch (err) {
+    showError(contentArea, '加载页面内容失败', err.message, () => selectWikiPage(title));
+    metaEl.textContent = '加载失败';
+  }
+}
+
+// ============================
+// Simple Markdown Renderer
+// ============================
+function renderMarkdown(md) {
+  if (!md) return '<p style="color:#999;">（空内容）</p>';
+
+  let html = md;
+
+  // Escape HTML first (except what we'll render)
+  html = html.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+  // Code blocks (triple backtick)
+  html = html.replace(/```(\w*)\n([\s\S]*?)```/g, (_, lang, code) => {
+    return `<pre style="background:#f5f5f5;padding:12px;border-radius:8px;overflow-x:auto;font-size:12px;line-height:1.5;"><code>${code.trim()}</code></pre>`;
+  });
+
+  // Inline code
+  html = html.replace(/`([^`]+)`/g, '<code style="background:#f0f0f0;padding:1px 5px;border-radius:3px;font-size:13px;">$1</code>');
+
+  // Bold
+  html = html.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+
+  // Italic
+  html = html.replace(/\*([^*]+)\*/g, '<em>$1</em>');
+
+  // Cross-references [[...]]
+  html = html.replace(/\[\[([^\]]+)\]\]/g, (_, ref) => {
+    return `<span class="cross-ref" onclick="selectWikiPage('${escapeAttr(ref.trim())}')" title="点击查看交叉引用页面">📎 ${escapeHtml(ref.trim())}</span>`;
+  });
+
+  // Headers (line-start)
+  html = html.replace(/^### (.+)$/gm, '<h3>$1</h3>');
+  html = html.replace(/^## (.+)$/gm, '<h2>$1</h2>');
+  html = html.replace(/^# (.+)$/gm, '<h1>$1</h1>');
+
+  // Unordered lists
+  html = html.replace(/^[\-\*] (.+)$/gm, '<li>$1</li>');
+  html = html.replace(/((?:<li>.*<\/li>\n?)+)/g, '<ul>$1</ul>');
+  // Fix: if multiple <ul> blocks are adjacent, merge them
+  html = html.replace(/<\/ul>\n<ul>/g, '');
+
+  // Ordered lists
+  html = html.replace(/^\d+\. (.+)$/gm, '<li>$1</li>');
+
+  // Horizontal rules
+  html = html.replace(/^---+$/gm, '<hr style="border:none;border-top:1px solid #e0e0e0;margin:16px 0;">');
+
+  // Paragraphs: wrap remaining non-tag lines
+  html = html.replace(/\n\n/g, '</p><p>');
+  html = '<p>' + html + '</p>';
+  // Clean empty paragraphs
+  html = html.replace(/<p><\/p>/g, '');
+  html = html.replace(/<p>(\s*<h[123])/g, '$1');
+  html = html.replace(/(<\/h[123]>)\s*<\/p>/g, '$1');
+  html = html.replace(/<p>(\s*<ul)/g, '$1');
+  html = html.replace(/(<\/ul>)\s*<\/p>/g, '$1');
+  html = html.replace(/<p>(\s*<hr[^>]*>)\s*<\/p>/g, '$1');
+
+  return html;
+}
+
+// ============================
+// Lint
+// ============================
+async function loadLintResults() {
+  const lintArea = document.getElementById('lintArea');
+  const lintBtn = document.getElementById('lintBtn');
+  lintArea.style.display = 'block';
+  lintArea.innerHTML = '<div class="loading-block"><div class="spinner"></div><span>正在扫描...</span></div>';
+  lintBtn.disabled = true;
+
+  try {
+    const res = await fetch('/api/wiki/lint', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: '{}'
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+
+    const issues = data.issues || [];
+    if (issues.length === 0) {
+      lintArea.innerHTML = `
+        <div style="text-align:center;padding:12px;color:#166534;font-size:13px;">
+          ✅ 扫描了 ${data.scanned_pages || 0} 个页面，未发现问题
+        </div>
+      `;
+    } else {
+      lintArea.innerHTML = `
+        <div style="font-size:13px;font-weight:600;margin-bottom:8px;color:#444;">
+          扫描了 ${data.scanned_pages || 0} 个页面，发现 ${issues.length} 个问题:
+        </div>
+        ${issues.map(issue => `
+          <div class="lint-issue ${issue.severity || 'info'}">
+            <span class="severity-badge">${(issue.severity || 'info').toUpperCase()}</span>
+            <div>
+              <strong>${escapeHtml(issue.type || '未知')}</strong>
+              ${issue.pages ? `<span style="color:#999;"> — 涉及: ${escapeHtml(Array.isArray(issue.pages) ? issue.pages.join(', ') : issue.pages)}</span>` : ''}
+              <div style="margin-top:2px;">${escapeHtml(issue.description || '')}</div>
+            </div>
+          </div>
+        `).join('')}
+      `;
+    }
+  } catch (err) {
+    lintArea.innerHTML = `
+      <div class="error-block" style="padding:12px;">
+        <span>❌ Lint 检查失败</span>
+        <span style="font-size:12px;">${escapeHtml(err.message)}</span>
+        <button class="btn btn-sm btn-primary" onclick="loadLintResults()">重试</button>
+      </div>
+    `;
+  }
+  lintBtn.disabled = false;
+}
+
+// ============================
+// Panel: Document Ingestion
+// ============================
+function handleDragOver(e) {
+  e.preventDefault();
+  e.stopPropagation();
+  document.getElementById('uploadZone').classList.add('drag-over');
+}
+
+function handleDragLeave(e) {
+  e.preventDefault();
+  e.stopPropagation();
+  document.getElementById('uploadZone').classList.remove('drag-over');
+}
+
+function handleDrop(e) {
+  e.preventDefault();
+  e.stopPropagation();
+  document.getElementById('uploadZone').classList.remove('drag-over');
+  const files = e.dataTransfer.files;
+  if (files.length > 0) {
+    uploadFiles(Array.from(files));
+  }
+}
+
+function handleFileSelect(e) {
+  const files = e.target.files;
+  if (files.length > 0) {
+    uploadFiles(Array.from(files));
+  }
+  e.target.value = '';
+}
+
+async function uploadFiles(files) {
+  const progressContainer = document.getElementById('progressContainer');
+  const progressFill = document.getElementById('progressFill');
+  const progressLabel = document.getElementById('progressLabel');
+  const ingestResult = document.getElementById('ingestResult');
+
+  progressContainer.style.display = 'block';
+  progressFill.style.width = '0%';
+  progressLabel.hidden = false;
+  ingestResult.hidden = true;
+
+  let success = 0;
+  let failed = 0;
+  const errors = [];
+  const total = files.length;
+
+  for (let i = 0; i < files.length; i++) {
+    const file = files[i];
+    progressLabel.textContent = `正在上传第 ${i + 1}/${total} 个文件: ${file.name}`;
+    progressFill.style.width = '0%';
+    progressFill.style.background = '#1a73e8';
+
+    try {
+      await uploadSingleFile(file);
+      success++;
+    } catch (err) {
+      failed++;
+      errors.push(`${file.name}: ${err.message}`);
+    }
+  }
+
+  progressFill.style.width = '100%';
+  progressLabel.hidden = true;
+
+  // 汇总结果
+  ingestResult.className = failed > 0 ? 'upload-result error' : 'upload-result';
+  let html = `<h4>${failed > 0 ? '⚠️' : '✅'} 上传完成</h4><ul>`;
+  html += `<li>成功: <strong>${success}</strong></li>`;
+  html += `<li>失败: <strong>${failed}</strong></li>`;
+  html += `</ul>`;
+  if (errors.length > 0) {
+    html += `<p style="margin-top:6px;font-size:12px;color:#555;">${errors.map(e => escapeHtml(e)).join('<br>')}</p>`;
+  }
+  ingestResult.innerHTML = html;
+  ingestResult.hidden = false;
+
+  setTimeout(() => {
+    progressContainer.style.display = 'none';
+    progressFill.style.width = '0%';
+    progressFill.style.background = '#1a73e8';
+  }, 1500);
+}
+
+async function uploadSingleFile(file) {
+  const progressFill = document.getElementById('progressFill');
+
+  // Simulate progress animation
+  let progress = 0;
+  const progressInterval = setInterval(() => {
+    progress += Math.random() * 15;
+    if (progress > 90) progress = 90;
+    progressFill.style.width = progress + '%';
+  }, 300);
+
+  try {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const res = await fetch('/api/ingest', {
+      method: 'POST',
+      body: formData
+    });
+
+    clearInterval(progressInterval);
+    progressFill.style.width = '100%';
+
+    if (!res.ok) {
+      const errText = await res.text();
+      throw new Error(`HTTP ${res.status}: ${errText}`);
+    }
+
+    const data = await res.json();
+
+    if (data.error) {
+      throw new Error(data.error);
+    }
+
+    return data;
+
+  } catch (err) {
+    clearInterval(progressInterval);
+    progressFill.style.background = '#ea4335';
+    throw err;
+  }
+}
+
+// ============================
+// Panel: Q&A Testing
+// ============================
+async function sendQaQuestion() {
+  const input = document.getElementById('qaQuestionInput');
+  const question = input.value.trim();
+  if (!question) return;
+
+  const mode = document.getElementById('qaModeSelect').value;
+  const sendBtn = document.getElementById('qaSendBtn');
+  const history = document.getElementById('qaHistory');
+
+  input.value = '';
+  sendBtn.disabled = true;
+
+  // Add user question
+  STATE.qaHistory.push({ type: 'question', text: question, mode });
+  renderQaHistory();
+
+  // Add loading entry
+  const loadingId = 'qa-loading-' + Date.now();
+  STATE.qaHistory.push({ type: 'loading', id: loadingId });
+  renderQaHistory();
+
+  try {
+    const res = await fetch('/api/query', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ question, mode, top_k: 5 })
+    });
+
+    // Remove loading
+    STATE.qaHistory = STATE.qaHistory.filter(h => h.id !== loadingId);
+
+    if (!res.ok) {
+      const errText = await res.text();
+      STATE.qaHistory.push({ type: 'error', text: `请求失败 (${res.status}): ${errText}` });
+    } else {
+      const data = await res.json();
+      STATE.qaHistory.push({
+        type: 'answer',
+        answer: data.answer || '（无回答）',
+        source: data.source || 'unknown',
+        confidence: data.confidence || 'medium',
+        sourcePages: data.source_pages || [],
+        sources: data.sources || [],
+        cached: data.cached || false,
+      });
+    }
+  } catch (err) {
+    STATE.qaHistory = STATE.qaHistory.filter(h => h.id !== loadingId);
+    STATE.qaHistory.push({ type: 'error', text: `网络错误: ${err.message}` });
+  }
+
+  renderQaHistory();
+  sendBtn.disabled = false;
+}
+
+function renderQaHistory() {
+  const history = document.getElementById('qaHistory');
+
+  if (STATE.qaHistory.length === 0) {
+    history.innerHTML = `
+      <div class="empty-state">
+        <div class="empty-icon">💬</div>
+        <span>输入问题开始测试问答</span>
+        <span style="font-size:11px;color:#bbb;">可切换 auto / agent / pipeline 模式</span>
+      </div>
+    `;
+    return;
+  }
+
+  history.innerHTML = STATE.qaHistory.map(item => {
+    if (item.type === 'question') {
+      return `
+        <div class="qa-card">
+          <div class="qa-question">🙋 ${escapeHtml(item.text)}</div>
+          <div style="font-size:11px;color:#999;">模式: ${escapeHtml(item.mode)}</div>
+        </div>
+      `;
+    }
+    if (item.type === 'loading') {
+      return `
+        <div class="qa-card" id="${item.id}">
+          <div style="display:flex;align-items:center;gap:10px;color:#999;">
+            <div class="spinner"></div> <span>思考中...</span>
+          </div>
+        </div>
+      `;
+    }
+    if (item.type === 'error') {
+      return `
+        <div class="qa-card" style="border-left:3px solid #ea4335;">
+          <div class="qa-answer" style="color:#c5221f;">❌ ${escapeHtml(item.text)}</div>
+        </div>
+      `;
+    }
+    if (item.type === 'answer') {
+      const confClass = item.confidence === 'high' ? 'conf-high' : (item.confidence === 'low' ? 'conf-low' : 'conf-medium');
+      const sourceClass = `source-${item.source}`;
+      const cachedBadge = item.cached ? '<span class="qa-badge" style="background:#e8f0fe;color:#1a73e8;">⚡ 缓存命中</span>' : '';
+
+      let sourcesHtml = '';
+      if (item.sourcePages && item.sourcePages.length > 0) {
+        sourcesHtml += `<div class="qa-sources">📄 引用页面: ${item.sourcePages.map(p => escapeHtml(p)).join(', ')}</div>`;
+      }
+      if (item.sources && item.sources.length > 0) {
+        sourcesHtml += `<div class="qa-sources">🔗 RAG 来源: ${item.sources.map(s => {
+          if (typeof s === 'string') return escapeHtml(s);
+          if (s.title) return escapeHtml(s.title);
+          return escapeHtml(JSON.stringify(s));
+        }).join(', ')}</div>`;
+      }
+
+      return `
+        <div class="qa-card">
+          <div class="qa-answer">${renderMarkdown(item.answer)}</div>
+          <div class="qa-meta">
+            <span class="qa-badge ${sourceClass}">来源: ${escapeHtml(item.source)}</span>
+            <span class="qa-badge ${confClass}">置信度: ${escapeHtml(item.confidence)}</span>
+            ${cachedBadge}
+          </div>
+          ${sourcesHtml}
+        </div>
+      `;
+    }
+  }).join('');
+
+  // Scroll to bottom
+  history.scrollTop = history.scrollHeight;
+}
+
+// ============================
+// Panel: System Logs
+// ============================
+async function refreshLogs() {
+  const timeline = document.getElementById('logTimeline');
+  const logCount = document.getElementById('logCount');
+  timeline.innerHTML = '<div class="loading-block"><div class="spinner"></div><span>加载日志中...</span></div>';
+
+  try {
+    const res = await fetch('/api/admin/dashboard');
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    const ops = data.recent_operations || [];
+
+    logCount.textContent = ops.length;
+
+    if (ops.length === 0) {
+      timeline.innerHTML = '<div class="empty-state"><span style="font-size:28px;">📭</span><span>暂无操作日志</span></div>';
+    } else {
+      timeline.innerHTML = ops.map((op, i) => {
+        const now = new Date();
+        const time = new Date(now.getTime() - (ops.length - i) * 60000);
+        const timeStr = time.toLocaleString('zh-CN', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        return `
+          <div class="timeline-item">
+            <div class="tl-time">${timeStr}</div>
+            <div class="tl-desc">${escapeHtml(op)}</div>
+          </div>
+        `;
+      }).join('');
+    }
+  } catch (err) {
+    showError(timeline, '加载日志失败', err.message, refreshLogs);
+    logCount.textContent = '0';
+  }
+}
+
+// ============================
+// Utility Functions
+// ============================
+function escapeHtml(str) {
+  if (!str) return '';
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+function escapeAttr(str) {
+  return str.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/'/g, '&#39;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+function showError(container, title, message, retryFn) {
+  container.innerHTML = `
+    <div class="error-block">
+      <span style="font-size:28px;">⚠️</span>
+      <strong>${escapeHtml(title)}</strong>
+      <span style="font-size:12px;">${escapeHtml(message)}</span>
+      ${retryFn ? '<button class="btn btn-sm btn-primary" onclick="(' + retryFn.toString() + ')()">🔄 重试</button>' : ''}
+    </div>
+  `;
+}
+
+// ============================
+// Start App
+// ============================
+document.addEventListener('DOMContentLoaded', init);
+</script>
+
+</body>
+</html>

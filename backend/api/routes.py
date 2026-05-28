@@ -7,24 +7,47 @@ from typing import Optional
 from fastapi import APIRouter, UploadFile, File, Query, HTTPException
 from fastapi.responses import StreamingResponse
 
-from models.schemas import (
+from schemas.schemas import (
     QueryRequest, QueryResponse, IngestResponse,
     IndexResponse, IndexEntry, WikiPageResponse,
     LintRequest, LintResponse, LintIssue,
     HealthResponse, SourceInfo,
 )
-from services.query_service import QueryService
-from services.ingest_service import IngestService
-from core.wiki_engine import WikiEngine
 from core.llm_provider import get_llm
 
 router = APIRouter(prefix="/api")
 
-query_service = QueryService()
-ingest_service = IngestService()
-wiki_engine = WikiEngine()
-
 START_TIME = time.time()
+
+# ===== 延迟加载（避免启动时 OOM）=====
+
+_query_service = None
+_ingest_service = None
+_wiki_engine = None
+
+
+def _get_query_service():
+    global _query_service
+    if _query_service is None:
+        from services.query_service import QueryService
+        _query_service = QueryService()
+    return _query_service
+
+
+def _get_ingest_service():
+    global _ingest_service
+    if _ingest_service is None:
+        from services.ingest_service import IngestService
+        _ingest_service = IngestService()
+    return _ingest_service
+
+
+def _get_wiki_engine():
+    global _wiki_engine
+    if _wiki_engine is None:
+        from core.wiki_engine import WikiEngine
+        _wiki_engine = WikiEngine.get_instance()
+    return _wiki_engine
 
 
 # ===== 管理员仪表盘 =====
@@ -32,6 +55,9 @@ START_TIME = time.time()
 @router.get("/admin/dashboard")
 def admin_dashboard():
     """管理员仪表盘：Wiki + RAG + 缓存 + 最近操作 一站式视图"""
+    wiki_engine = _get_wiki_engine()
+    query_service = _get_query_service()
+    
     # Wiki 统计
     wiki_stats = {
         "total_pages": wiki_engine.page_count(),
@@ -84,6 +110,8 @@ def admin_dashboard():
 
 @router.get("/health", response_model=HealthResponse)
 def health():
+    wiki_engine = _get_wiki_engine()
+    query_service = _get_query_service()
     llm = get_llm()
     return HealthResponse(
         status="ok",
@@ -100,6 +128,7 @@ def health():
 @router.post("/ingest", response_model=IngestResponse)
 async def ingest(file: UploadFile = File(...)):
     """上传文档，触发 Wiki Ingest + RAG 索引"""
+    ingest_service = _get_ingest_service()
     try:
         content = await file.read()
         result = ingest_service.ingest_file(content, file.filename)
@@ -123,6 +152,7 @@ async def ingest(file: UploadFile = File(...)):
 @router.post("/query", response_model=QueryResponse)
 def query(req: QueryRequest):
     """知识问答：Wiki 优先 -> RAG 兜底 + ReAct Agent 自主决策"""
+    query_service = _get_query_service()
     mode = req.mode if hasattr(req, "mode") else "pipeline"
     if req.stream:
         raise HTTPException(400, "流式输出请使用 /api/query/stream")
@@ -145,12 +175,15 @@ def query(req: QueryRequest):
         confidence=result.get("confidence", "medium"),
         cached=result.get("cached", False),
         session_id=req.session_id,
+        parsed_question=result.get("parsed_question") or "",
+        pages_consulted=result.get("pages_consulted") or [],
     )
 
 
 @router.post("/query/stream")
 def query_stream(req: QueryRequest):
     """流式知识问答"""
+    query_service = _get_query_service()
     mode = req.mode if hasattr(req, "mode") else "pipeline"
     result = query_service.query_with_mode(req.question, mode, req.top_k)
     answer = result["answer"]
@@ -169,6 +202,7 @@ def query_stream(req: QueryRequest):
 @router.get("/wiki/index", response_model=IndexResponse)
 def wiki_index():
     """获取 Wiki 目录"""
+    wiki_engine = _get_wiki_engine()
     index_text = wiki_engine.get_index()
     entries = []
     for line in index_text.split("\n"):
@@ -193,6 +227,7 @@ def wiki_index():
 @router.get("/wiki/page/{title:path}", response_model=WikiPageResponse)
 def wiki_page(title: str):
     """获取 Wiki 页面内容"""
+    wiki_engine = _get_wiki_engine()
     content = wiki_engine.read_page(title)
     if content is None:
         raise HTTPException(404, f"Wiki 页面不存在: {title}")
@@ -213,6 +248,7 @@ def wiki_page(title: str):
 @router.post("/wiki/lint", response_model=LintResponse)
 def wiki_lint(req: LintRequest = LintRequest()):
     """触发 Wiki 健康检查"""
+    wiki_engine = _get_wiki_engine()
     issues_raw = wiki_engine.lint()
 
     issues = []

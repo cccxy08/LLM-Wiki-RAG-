@@ -1,15 +1,61 @@
-﻿# .gitignore
-.env
+# Python
 __pycache__/
-chroma_db/
-logs/
-.models/
-*.log
 *.pyc
-_error.log
+*.pyo
+*.egg-info/
+dist/
+build/
+
+# 环境变量（含 API Key）
+.env
+.env.*
+
+# 向量数据库（可重建）
+chroma_db/
+
+# 本地模型权重
+.models/
+
+# 日志
+*.log
+logs/
 _stdout.log
 _stderr.log
+_error.log
+
+# 临时文件
 .tmp/
-backend/models/
-backend/chroma_db/
-backend/static/
+nul
+
+# AI 工具残留
+.arts/
+.claude/
+.codeartsdoer/
+
+# 测试归档
+tests/archive/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Server runtime
+server.pid
+
+# Wiki data — 业务数据，完全排除
+wiki-data/
+wiki-data/raw/
+wiki-data/wiki/
+wiki-data/backlinks.json
+wiki-data/tags.json
+wiki-data/assets/
+
+# Docker volumes
+data/

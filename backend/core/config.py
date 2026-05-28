@@ -15,6 +15,7 @@ class Settings(BaseSettings):
     embedding_device: str = "cpu"
     chroma_persist_dir: str = "./chroma_db"
     chroma_collection_name: str = "enterprise_knowledge"
+    chroma_parent_collection_name: str = "enterprise_knowledge_parents"
     wiki_data_dir: str = "../wiki-data"
     wiki_raw_dir: str = "../wiki-data/raw"
     wiki_pages_dir: str = "../wiki-data/wiki"
@@ -22,9 +23,15 @@ class Settings(BaseSettings):
     chunk_overlap: int = 50
     chunk_strategy: dict = {}
     retrieval_top_k: int = 10
+    parent_child_enabled: bool = True
+    parent_chunk_size: int = 750   # Parent 大切片（上下文完整）
+    child_chunk_size: int = 250   # Child 小切片（检索精度高）
+    child_chunk_overlap: int = 50
+    parent_chunk_overlap: int = 20
     rerank_top_k: int = 3
-    similarity_threshold: float = 0.5
+    similarity_threshold: float = 2.0
     bm25_weight: float = 0.3
+    reranker_model_path: str = "./.models/BAAI/bge-reranker-base"
     agent_max_iterations: int = 5
     agent_min_self_score: int = 7
     max_history_rounds: int = 10
